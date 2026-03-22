@@ -111,6 +111,45 @@ app.post('/resend', (req, res) => {
   });
 });
 
+
+// ══════════════════════════════════════════════════
+//  CANCEL ENDPOINT — remove a job from the queue
+//  Only works if job hasn't started processing yet
+//  Usage: POST /cancel  { "email": "customer@email.com", "adminKey": "..." }
+// ══════════════════════════════════════════════════
+app.post('/cancel', (req, res) => {
+  const { email, adminKey } = req.body;
+
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const index = queue.findIndex(j => j.email === email);
+
+  if (index === -1) {
+    // Check if it's currently processing (can't cancel mid-generation)
+    if (isProcessing && jobStore[email] && !jobStore[email].completedAt) {
+      return res.status(409).json({ 
+        error: 'Job is currently processing and cannot be cancelled',
+        tip: 'Wait for it to finish, then do not resend'
+      });
+    }
+    return res.status(404).json({ error: `No queued job found for ${email}` });
+  }
+
+  // Remove from queue
+  queue.splice(index, 1);
+  // Remove from job store so resend won't work either
+  delete jobStore[email];
+
+  console.log(`Job cancelled for ${email}. Queue length: ${queue.length}`);
+  res.status(200).json({ 
+    cancelled: true, 
+    email,
+    remainingQueue: queue.length
+  });
+});
+
 // ══════════════════════════════════════════════════
 //  LIST STORED JOBS — see all jobs you can resend
 // ══════════════════════════════════════════════════
