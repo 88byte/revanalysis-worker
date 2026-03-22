@@ -71,23 +71,44 @@ app.get('/status', (req, res) => {
 // ══════════════════════════════════════════════════
 app.post('/resend', (req, res) => {
   const { email, adminKey } = req.body;
-
-  // Basic protection so random people can't trigger resends
   if (adminKey !== process.env.ADMIN_KEY) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
-
   const job = jobStore[email];
   if (!job) {
-    return res.status(404).json({ 
-      error: `No job found for ${email}`,
-      availableEmails: Object.keys(jobStore)
+    return res.status(404).json({ error: `No job found for ${email}` });
+  }
+
+  // If report was already generated, just resend it instantly
+  if (job.completedHtml) {
+    console.log(`Instant resend for ${email} — report already generated`);
+    sendEmail({
+      to: email,
+      bizName: job.bizName,
+      reportHtml: job.completedHtml,
+      pdfBase64: job.completedPdf || null,
+      pdfFilename: `${(job.bizName||'Report').replace(/[^a-z0-9]/gi,'_')}_RevAnalysis_Report.pdf`
+    })
+    .then(() => console.log(`✓ Instant resend complete for ${email}`))
+    .catch(e => console.error(`Resend email failed:`, e.message));
+
+    return res.status(200).json({ 
+      queued: false, 
+      instant: true, 
+      email, 
+      message: 'Report resent instantly from cache' 
     });
   }
 
+  // Report not yet generated — re-queue the job
+  console.log(`Re-queuing job for ${email} — no completed report found`);
   enqueue({ ...job });
-  console.log(`Resend queued for ${email}`);
-  res.status(200).json({ queued: true, email, bizName: job.bizName });
+  res.status(200).json({ 
+    queued: true, 
+    instant: false,
+    email, 
+    message: 'Report queued for regeneration' 
+  });
 });
 
 // ══════════════════════════════════════════════════
@@ -192,7 +213,12 @@ async function generateAndSend({ email, bizName, industry, calcData, answers }) 
     pdfBase64,
     pdfFilename: `${(bizName||'Report').replace(/[^a-z0-9]/gi,'_')}_RevAnalysis_Report.pdf`
   });
- 
+
+  // Save the completed report HTML for instant resends
+  jobStore[email].completedHtml = reportHtml;
+  jobStore[email].completedPdf = pdfBase64;
+  jobStore[email].completedAt = new Date().toISOString();
+
   console.log(`✓ Email sent to ${email}`);
 }
  
