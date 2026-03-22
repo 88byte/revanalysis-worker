@@ -12,6 +12,9 @@ app.use(express.json({ limit: '10mb' }));
 // ══════════════════════════════════════════════════
 const queue = [];
 let isProcessing = false;
+
+// Store all jobs by email so they can be resent
+const jobStore = {};
  
 function enqueue(job) {
   queue.push(job);
@@ -58,6 +61,51 @@ app.get('/status', (req, res) => {
     jobs: queue.map(j => ({ email: j.email, bizName: j.bizName }))
   });
 });
+
+
+// ══════════════════════════════════════════════════
+//  RESEND ENDPOINT — for manual resends when customer 
+//  didn't receive their report
+//  Usage: POST /resend  { "email": "customer@email.com" }
+//  Protected by ADMIN_KEY env var
+// ══════════════════════════════════════════════════
+app.post('/resend', (req, res) => {
+  const { email, adminKey } = req.body;
+
+  // Basic protection so random people can't trigger resends
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const job = jobStore[email];
+  if (!job) {
+    return res.status(404).json({ 
+      error: `No job found for ${email}`,
+      availableEmails: Object.keys(jobStore)
+    });
+  }
+
+  enqueue({ ...job });
+  console.log(`Resend queued for ${email}`);
+  res.status(200).json({ queued: true, email, bizName: job.bizName });
+});
+
+// ══════════════════════════════════════════════════
+//  LIST STORED JOBS — see all jobs you can resend
+// ══════════════════════════════════════════════════
+app.get('/jobs', (req, res) => {
+  const { adminKey } = req.query;
+  if (adminKey !== process.env.ADMIN_KEY) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  const jobs = Object.values(jobStore).map(j => ({
+    email: j.email,
+    bizName: j.bizName,
+    industry: j.industry,
+    savedAt: j.savedAt
+  }));
+  res.json({ count: jobs.length, jobs });
+});
  
 // ══════════════════════════════════════════════════
 //  GENERATE ENDPOINT
@@ -68,11 +116,13 @@ app.post('/generate', (req, res) => {
   if (!email || !calcData) {
     return res.status(400).json({ error: 'Missing required fields' });
   }
+
+  // Save job data for potential resend
+  jobStore[email] = { email, bizName, industry, calcData, answers, savedAt: new Date().toISOString() };
+
   enqueue({ email, bizName, industry, calcData, answers });
   const position = queue.length;
-  const estimatedMinutes = isProcessing
-    ? Math.round((position + 1) * 6)
-    : Math.round(position * 6);
+  const estimatedMinutes = isProcessing ? Math.round((position + 1) * 6) : Math.round(position * 6);
   res.status(200).json({ queued: true, position, estimatedMinutes });
 });
  
