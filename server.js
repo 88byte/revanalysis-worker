@@ -104,10 +104,25 @@ app.post('/resend', async (req, res) => {
   if (!job) return res.status(404).json({ error: `No job found for ${email} — not in memory or Supabase` });
 
   if (job.completedHtml) {
-    sendEmail({ to: email, firstName: job.firstName||'', bizName: job.bizName, reportHtml: job.completedHtml, pdfBase64: job.completedPdf || null, pdfFilename: `${(job.bizName||'Report').replace(/[^a-z0-9]/gi,'_')}_RevAnalysis_Report.pdf` })
+    const pdfFilename = `${(job.bizName||'Report').replace(/[^a-z0-9]/gi,'_')}_RevAnalysis_Report.pdf`;
+
+    // Regenerate PDF if not cached (e.g. after Railway restart)
+    let pdfBase64 = job.completedPdf || null;
+    if (!pdfBase64) {
+      console.log(`PDF not cached for ${email} — regenerating...`);
+      try {
+        pdfBase64 = await generatePDF(job.completedHtml);
+        job.completedPdf = pdfBase64; // cache it back
+        console.log(`✓ PDF regenerated for ${email}`);
+      } catch(e) {
+        console.warn(`PDF regeneration failed for ${email}:`, e.message);
+      }
+    }
+
+    sendEmail({ to: email, firstName: job.firstName||'', bizName: job.bizName, reportHtml: job.completedHtml, pdfBase64, pdfFilename })
       .then(() => console.log(`✓ Instant resend complete for ${email}`))
       .catch(e => console.error(`Resend email failed:`, e.message));
-    return res.status(200).json({ queued: false, instant: true, email, message: 'Report resent instantly from cache' });
+    return res.status(200).json({ queued: false, instant: true, email, message: 'Report resent with PDF attachment' });
   }
 
   enqueue({ ...job });
