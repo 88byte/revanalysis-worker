@@ -81,6 +81,30 @@ app.post('/generate', (req, res) => {
   const { email, firstName, lastName, title, bizName, industry, calcData, answers, consentBenchmark } = req.body;
   if (!email || !calcData) return res.status(400).json({ error: 'Missing required fields' });
   jobStore[email] = { email, firstName:firstName||'', lastName:lastName||'', title:title||'', bizName, industry, calcData, answers, consentBenchmark:consentBenchmark||false, savedAt: new Date().toISOString() };
+  
+  // ← ADD THIS
+  saveToSupabase({
+    email,
+    first_name: firstName||'',
+    last_name: lastName||'',
+    title: title||'',
+    biz_name: bizName,
+    industry,
+    revenue_range: calcData?.meta?.revLabel||'',
+    revenue_mid: calcData?.meta?.revMid||0,
+    avg_transaction_mid: calcData?.meta?.avgMid||0,
+    close_rate: calcData?.meta?.close||0,
+    overall_score: calcData?.overallScore||0,
+    total_opportunity: calcData?.total||0,
+    total_lo: calcData?.totalLo||0,
+    total_hi: calcData?.totalHi||0,
+    cats: calcData?.cats||[],
+    scores: calcData?.sc||{},
+    answers: answers||{},
+    consent_benchmark: consentBenchmark||false,
+    report_delivered: false,
+  }).catch(e => console.warn('Supabase intake save failed:', e.message));
+
   enqueue({ email, firstName:firstName||'', lastName:lastName||'', title:title||'', bizName, industry, calcData, answers, consentBenchmark:consentBenchmark||false });
   const position = queue.length;
   const estimatedMinutes = isProcessing ? Math.round((position + 1) * 6) : Math.round(position * 6);
@@ -114,6 +138,64 @@ function getIndustryBenchmarks(industry) {
     return { closeRate:45, retention:72, referralPct:28, reviewCount:22, label:'Tech & digital service businesses', source:'Salesforce + Clutch' };
   return { closeRate:60, retention:35, referralPct:22, reviewCount:55, label:'Small businesses in your sector', source:'SBA + Google' };
 }
+
+
+// ══════════════════════════════════════════════════
+//  SUPABASE — save diagnostic data
+// ══════════════════════════════════════════════════
+async function saveToSupabase(data) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) { console.warn('Supabase env vars missing — skipping save'); return; }
+
+  try {
+    const r = await fetch(`${url}/rest/v1/diagnostics`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': key,
+        'Authorization': `Bearer ${key}`,
+        'Prefer': 'return=representation'
+      },
+      body: JSON.stringify(data)
+    });
+    if (!r.ok) {
+      const err = await r.text().catch(() => '');
+      console.warn(`Supabase save failed ${r.status}:`, err.substring(0, 200));
+    } else {
+      console.log(`✓ Saved to Supabase for ${data.email}`);
+    }
+  } catch(e) {
+    console.warn('Supabase save error:', e.message);
+  }
+}
+
+async function updateSupabaseDelivered(email) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return;
+
+  try {
+    await fetch(`${url}/rest/v1/diagnostics?email=eq.${encodeURIComponent(email)}&order=created_at.desc&limit=1`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': key,
+        'Authorization': `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        report_delivered: true,
+        delivered_at: new Date().toISOString()
+      })
+    });
+    console.log(`✓ Supabase delivery status updated for ${email}`);
+  } catch(e) {
+    console.warn('Supabase update error:', e.message);
+  }
+}
+
+
+
  
 // ══════════════════════════════════════════════════
 //  MAIN GENERATION
@@ -166,6 +248,9 @@ async function generateAndSend({ email, firstName, lastName, title, bizName, ind
   jobStore[email].completedPdf = pdfBase64;
   jobStore[email].completedAt = new Date().toISOString();
   console.log(`✓ Email sent to ${email}`);
+  updateSupabaseDelivered(email); // ← ADD THIS LINE
+
+  
 }
  
 const sleep = ms => new Promise(r => setTimeout(r, ms));
