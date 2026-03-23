@@ -536,7 +536,7 @@ async function generatePDF(html) {
  
 async function sendEmail({ to, bizName, reportHtml, pdfBase64, pdfFilename }) {
   const payload = {
-    from: 'RevAnalysis <report@RevAnalysis.com>',
+    from: 'RevAnalysis <report@revanalysis.com>',
     to: [to],
     subject: `Your RevAnalysis Report is ready — ${bizName}`,
     html: reportHtml
