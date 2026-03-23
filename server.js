@@ -1,5 +1,3 @@
-Server · JS
-Copy
 
 const express = require('express');
 const fetch = require('node-fetch');
@@ -250,7 +248,7 @@ async function generateAndSend({ email, firstName, lastName, title, bizName, ind
   console.log(`✓ Email sent to ${email}`);
   updateSupabaseDelivered(email); // ← ADD THIS LINE
 
-  
+
 }
  
 const sleep = ms => new Promise(r => setTimeout(r, ms));
