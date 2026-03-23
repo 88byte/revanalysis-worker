@@ -965,7 +965,34 @@ function buildSectionPrompt(key, c) {
 }
  
 // ══════════════════════════════════════════════════
-//  START SERVER
+//  START SERVER + RECOVER PENDING JOBS FROM SUPABASE
 // ══════════════════════════════════════════════════
 const PORT = process.env.PORT || 3001;
-app.listen(PORT, () => console.log(`RevAnalysis worker running on port ${PORT}`));
+app.listen(PORT, async () => {
+  console.log(`RevAnalysis worker running on port ${PORT}`);
+
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) { console.log('Supabase env vars not set — skipping job recovery'); return; }
+
+  try {
+    const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const r = await fetch(
+      `${url}/rest/v1/diagnostics?report_delivered=eq.false&created_at=gte.${since}&order=created_at.asc`,
+      { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } }
+    );
+    if (!r.ok) { console.warn('Job recovery query failed:', r.status); return; }
+
+    const rows = await r.json();
+    if (!rows.length) { console.log('Job recovery: no pending jobs found'); return; }
+
+    console.log(`Job recovery: found ${rows.length} undelivered job(s)`);
+    rows.forEach(row => {
+      console.log(`  ⚠ Undelivered: ${row.email} (${row.biz_name}) — use POST /resend to retry`);
+    });
+    console.log(`Undelivered emails: ${rows.map(r => r.email).join(', ')}`);
+
+  } catch(e) {
+    console.warn('Job recovery error:', e.message);
+  }
+});
