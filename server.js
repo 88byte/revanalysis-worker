@@ -36,17 +36,80 @@ async function processNext() {
 app.get('/', (req, res) => res.json({ status: 'RevAnalysis worker running', queueLength: queue.length, isProcessing }));
 app.get('/status', (req, res) => res.json({ queueLength: queue.length, isProcessing, jobs: queue.map(j => ({ email: j.email, bizName: j.bizName })) }));
  
-app.post('/resend', (req, res) => {
+app.post('/resend', async (req, res) => {
   const { email, adminKey } = req.body;
   if (adminKey !== process.env.ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
-  const job = jobStore[email];
-  if (!job) return res.status(404).json({ error: `No job found for ${email}` });
+
+  let job = jobStore[email];
+
+  // If not in memory, try to reconstruct from Supabase
+  if (!job) {
+    const url = process.env.SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_KEY;
+    if (url && key) {
+      try {
+        const r = await fetch(
+          `${url}/rest/v1/diagnostics?email=eq.${encodeURIComponent(email)}&order=created_at.desc&limit=1`,
+          { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } }
+        );
+        const rows = await r.json();
+        if (rows && rows.length > 0) {
+          const row = rows[0];
+          // Reconstruct calcData from Supabase fields
+          const calcData = {
+            total: row.total_opportunity || 0,
+            totalLo: row.total_lo || 0,
+            totalHi: row.total_hi || 0,
+            cats: row.cats || [],
+            sc: row.scores || {},
+            overallScore: row.overall_score || 0,
+            meta: {
+              revMid: row.revenue_mid || 0,
+              revLo: Math.round((row.revenue_mid || 0) * 0.6),
+              revHi: Math.round((row.revenue_mid || 0) * 1.5),
+              avgMid: row.avg_transaction_mid || 0,
+              avgLo: Math.round((row.avg_transaction_mid || 0) * 0.6),
+              close: row.close_rate || 0.5,
+              revLabel: row.revenue_range || '',
+              avgLabel: '',
+              mthLeads: Math.max(1, Math.round((row.revenue_mid||0) / (row.avg_transaction_mid||1) / 12)),
+              annCusts: Math.max(1, Math.round((row.revenue_mid||0) / (row.avg_transaction_mid||1))),
+              dead: (row.answers && row.answers.deadLeads !== undefined) ? [5,20,50,112,175][Math.min(row.answers.deadLeads,4)] : 20,
+              retRate: (row.answers && row.answers.repeatRate !== undefined) ? [0.07,0.15,0.27,0.42,0.60][Math.min(row.answers.repeatRate,4)] : 0.15,
+              refRate: (row.answers && row.answers.referralPct !== undefined) ? [0.07,0.15,0.27,0.42,0.60][Math.min(row.answers.referralPct,4)] : 0.10,
+              reviewBand: (row.answers && row.answers.reviewVolume !== undefined) ? ['<10','11-30','31-100','100+'][Math.min(row.answers.reviewVolume,3)] : '<10',
+              reviewBandN: (row.answers && row.answers.reviewVolume !== undefined) ? [5,20,65,120][Math.min(row.answers.reviewVolume,3)] : 5,
+            }
+          };
+          job = {
+            email: row.email,
+            firstName: row.first_name || '',
+            lastName: row.last_name || '',
+            title: row.title || '',
+            bizName: row.biz_name || '',
+            industry: row.industry || '',
+            calcData,
+            answers: row.answers || {},
+            consentBenchmark: row.consent_benchmark || false,
+          };
+          jobStore[email] = job;
+          console.log(`Reconstructed job for ${email} from Supabase`);
+        }
+      } catch(e) {
+        console.warn('Supabase job reconstruction failed:', e.message);
+      }
+    }
+  }
+
+  if (!job) return res.status(404).json({ error: `No job found for ${email} — not in memory or Supabase` });
+
   if (job.completedHtml) {
     sendEmail({ to: email, firstName: job.firstName||'', bizName: job.bizName, reportHtml: job.completedHtml, pdfBase64: job.completedPdf || null, pdfFilename: `${(job.bizName||'Report').replace(/[^a-z0-9]/gi,'_')}_RevAnalysis_Report.pdf` })
       .then(() => console.log(`✓ Instant resend complete for ${email}`))
       .catch(e => console.error(`Resend email failed:`, e.message));
     return res.status(200).json({ queued: false, instant: true, email, message: 'Report resent instantly from cache' });
   }
+
   enqueue({ ...job });
   res.status(200).json({ queued: true, instant: false, email, message: 'Report queued for regeneration' });
 });
