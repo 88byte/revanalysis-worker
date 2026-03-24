@@ -350,11 +350,14 @@ async function generateAndSend({ email, firstName, lastName, title, bizName, ind
     const batchStart = Date.now();
 
     await Promise.all(batch.map(async (key) => {
+      const LONG_SECTIONS = new Set(['HIRE','ACQUIRE','SCALE','CHECKLIST','ROADMAP','TECH','ASSETS']);
       let attempt = 0;
       while (attempt < 3) {
         try {
           const prompt = buildSectionPrompt(key, ctx);
-          const result = await callAnthropic(prompt);
+          const maxTok = LONG_SECTIONS.has(key) ? 3800 : 2400;
+          const result = await callAnthropicWithTokens(prompt, maxTok);
+          // ... rest unchanged
           const parsed = parseSecs(result);
           const content = parsed[key] || Object.values(parsed)[0];
           if (!content) throw new Error('Empty response from AI');
@@ -922,12 +925,105 @@ blockquote {
   font-family: Georgia, serif;
 }
  
-/* ── PRINT ── */
+/* ── PAGE BREAK RULES (apply always, not just in print) ── */
+
+/* Cover gets its own page */
+.cover {
+  break-after: always;
+  page-break-after: always;
+}
+
+/* Section headers must never be orphaned from their content */
+.rsec-head {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+.chart-head {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+/* Headings stay with whatever follows them */
+h4 {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+h5 {
+  break-after: avoid;
+  page-break-after: avoid;
+}
+
+/* These blocks must never be split across pages */
+.action-box {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.script {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.quick-win {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.stat-call {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.disclaimer {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.pcard {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.kpi-strip {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.bench-strip {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.chart-wrap {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+.bench-metric-box {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Table rows and list items don't split */
+tr {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+ol li {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+ul li {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
+
+/* Sections flow naturally but don't orphan their header */
+.rsec {
+  break-inside: auto;
+  page-break-inside: auto;
+}
+
+/* ── PRINT OVERRIDES ── */
 @media print {
   body { background: white; }
   .cover { border-radius: 0; }
-  .rsec, .chart-section { page-break-inside: avoid; }
-  .script, .action-box, .quick-win, .pcard { page-break-inside: avoid; }
+  .rsec { border-radius: 0; }
+  .rsec-head { background: #0f1f3d !important; }
+  .script { background: #0f1f3d !important; }
+  .script p { color: #e2e8f0 !important; }
+  .footer { border-radius: 0; }
 }
 `;
  
@@ -937,12 +1033,15 @@ blockquote {
     {label:'Close Rate',you:yourClose+'%',bench:bench.closeRate+'%',youN:yourClose,benchN:bench.closeRate},
     {label:'Retention',you:'~'+Math.round((L.meta.retRate||0.15)*100)+'%',bench:bench.retention+'%',youN:Math.round((L.meta.retRate||0.15)*100),benchN:bench.retention},
     {label:'Referrals',you:'~'+Math.round((L.meta.refRate||0.10)*100)+'%',bench:bench.referralPct+'%',youN:Math.round((L.meta.refRate||0.10)*100),benchN:bench.referralPct},
-    {label:'Google Reviews',you:L.meta.reviewBand||'<30',bench:bench.reviewCount+'',youN:L.meta.reviewBandN||20,benchN:bench.reviewCount},
-  ];
+    {label:'Google Reviews',
+      you:`~${L.meta.reviewBandN||20}`,
+      bench:`avg ${bench.reviewCount}`,
+      youN:L.meta.reviewBandN||20,
+      benchN:bench.reviewCount},  ];
   const bmHtml = `<div class="bench-strip">
     <div class="bench-head">Industry comparison — ${bench.label} (Source: ${bench.source})</div>
     <div class="bench-row">${bm.map(m=>{
-      const status=m.youN>=m.benchN*0.9?'above':m.youN>=m.benchN*0.6?'at':'below';
+      const status = m.youN >= m.benchN ? 'above' : m.youN >= m.benchN * 0.8 ? 'at' : 'below';
       const tagStyle=status==='above'?'background:rgba(22,163,74,.12);color:#16a34a':status==='at'?'background:rgba(217,119,6,.12);color:#d97706':'background:rgba(220,38,38,.12);color:#dc2626';
       const numColor=status==='above'?'#16a34a':status==='at'?'#d97706':'#dc2626';
       return `<div class="bench-cell"><div class="bench-metric-box"><div class="bm-lbl">${m.label}</div><div class="bm-you" style="color:${numColor}">${m.you}</div><div class="bm-vs">vs avg</div><div class="bm-bench-val">${m.bench}</div><div class="bm-tag" style="${tagStyle}">${status==='above'?'Above avg':status==='at'?'Near avg':'Below avg'}</div></div></div>`;
@@ -1027,12 +1126,26 @@ async function callAnthropic(prompt) {
   if (!r.ok) throw new Error(data?.error?.message || `HTTP ${r.status}`);
   return data.content.map(b => b.text || '').join('');
 }
+
+async function callAnthropicWithTokens(prompt, maxTokens) {
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'x-api-key':process.env.ANTHROPIC_API_KEY, 'anthropic-version':'2023-06-01' },
+    body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens: maxTokens, messages:[{ role:'user', content:prompt }] })
+  });
+  const data = await r.json();
+  if (!r.ok) throw new Error(data?.error?.message || `HTTP ${r.status}`);
+  return data.content.map(b => b.text || '').join('');
+}
  
 async function generatePDF(html) {
   const r = await fetch('https://api.pdfshift.io/v3/convert/pdf', {
     method: 'POST',
     headers: { 'Content-Type':'application/json', 'Authorization':`Basic ${Buffer.from(`api:${process.env.PDFSHIFT_API_KEY}`).toString('base64')}` },
-    body: JSON.stringify({ source:html, landscape:false, use_print:false, format:'A4', margin:{ top:'12mm', right:'12mm', bottom:'12mm', left:'12mm' } })
+    body: JSON.stringify({ 
+      source:html, landscape:false, use_print:true, format:'A4', 
+      margin:{ top:'14mm', right:'14mm', bottom:'14mm', left:'14mm' } 
+    })
   });
   if (!r.ok) { const e = await r.text().catch(()=>''); throw new Error(`PDFShift ${r.status}: ${e.substring(0,200)}`); }
   const buffer = await r.arrayBuffer();
@@ -1105,6 +1218,9 @@ function buildServerContext(bizName, industry, calcData, answers, firstName, las
     revRange:L.meta.revLabel, revLo:`$${L.meta.revLo.toLocaleString()}`, revMid:`$${L.meta.revMid.toLocaleString()}`,
     avgLo:`$${L.meta.avgLo.toLocaleString()}`, avgMid:`$${L.meta.avgMid.toLocaleString()}`,
     close:`${Math.round(L.meta.close*100)}%`, mthLeads:L.meta.mthLeads, annCusts:L.meta.annCusts, dead:L.meta.dead,
+    // In the return object, add:
+    teamSize: a.teamSize !== undefined ? [1,2,5,12,25][Math.min(a.teamSize,4)] : 3,
+    deadVal: Math.round((L.meta.dead || 20) * 0.12 * (parseInt(String(L.meta.avgLo).replace(/[$,]/g,'')) || 0)),
     total:`~$${L.total.toLocaleString()}`, totalRange:`$${L.totalLo.toLocaleString()}–$${L.totalHi.toLocaleString()}`,
     top3, goal, bench,
     cats:L.cats.map(c=>`${c.n}: ~$${c.amt.toLocaleString()} (${c.desc})`).join('\n'),
@@ -1124,6 +1240,7 @@ CLIENT DATA:
 - Monthly leads: ~${c.mthLeads} | Close rate: ~${c.close} | Annual customers: ~${c.annCusts}
 - Total opportunity: ${c.total} (range: ${c.totalRange})
 - Top 3: ${c.top3} | Scores: ${c.scores} | Goal: ${c.goal}
+- Team size: ~${c.teamSize} people
  
 INDUSTRY BENCHMARKS (${c.bench.label} — ${c.bench.source}):
 - Close rate: ${c.bench.closeRate}% | Retention: ${c.bench.retention}% | Referrals: ${c.bench.referralPct}% | Reviews: ${c.bench.reviewCount}
@@ -1146,31 +1263,43 @@ RULES — NON-NEGOTIABLE:
 13. Recovery: "businesses in ${c.ind} that fix this typically recover 15–25% in 90 days."
 14. Reference benchmarks: "The average ${c.ind} business closes ${c.bench.closeRate}%. You're at X%. That gap costs $Y."
 15. START every section (except EXEC and BENCH) with: <div class="quick-win">⚡ Quick Win — [One specific action THIS WEEK — concrete, ${c.ind}-specific, doable in under 1 hour]</div>
-16. HTML only: <p>, <strong>, <h4>, <ul><li>, <ol><li>, <table>, <div class="stat-call">, <div class="script"><span class="slabel">...</span><p>...</p></div>, <div class="action-box"><h5>...</h5><ol>...</ol></div>, <div class="disclaimer">, <div class="quick-win">`;
+16. USE ONLY the benchmark figures provided above. Do NOT use your own training knowledge for benchmarks. The retention benchmark for this industry is ${c.bench.retention}%, not any other figure. The review benchmark is ${c.bench.reviewCount}, not any other figure.
+17. This business is located in ${c.city}, which is in the United States. Use ONLY US-specific platforms, directories, regulations, and market data. Never reference Australian platforms (HiPages, Oneflare, ServiceSeeking, Hipages), Australian regulators (WorkSafe, Fair Work), or Australian statistics.
+18. HTML only: <p>, <strong>, <h4>, <ul><li>, <ol><li>, <table>, <div class="stat-call">, <div class="script"><span class="slabel">...</span><p>...</p></div>, <div class="action-box"><h5>...</h5><ol>...</ol></div>, <div class="disclaimer">, <div class="quick-win">`;
 }
  
 function buildSectionPrompt(key, c) {
   const base = sysPrompt(c);
+  const revLoNum = c.L.meta.revLo || 0;
+  const priceUplift6 = Math.round(revLoNum * 0.06).toLocaleString();
+  const priceUplift6Mid = Math.round(c.L.meta.revMid * 0.06).toLocaleString();
+  // Add before the OPS prompt string:
+  const avgMidNum = parseInt((c.L.meta.avgMid||'').toString().replace(/[$,]/g,'')) || 1000;
+  const complaintCostLo = Math.round(avgMidNum * 4).toLocaleString();
+  const complaintCostHi = Math.round(avgMidNum * 6).toLocaleString();
+  // Pre-calculate:
+  const clvEstimate = Math.round(avgMidNum * 1.5 * 4).toLocaleString();
   const prompts = {
     EXEC:`${base}\nWrite ONLY the [EXEC] section. First line: [EXEC]\n\n5 focused paragraphs (~280 words):\n- Para 1: Open with ~${c.total} opportunity (range: ${c.totalRange}). Conservative language. Compelling ${c.ind}-specific analogy.\n- Para 2: Why ${c.ind} businesses specifically lose revenue this way — structural reasons.\n- Para 3: Top 3 opportunities: ${c.top3}. Dollar context and interconnection.\n- Para 4: What the next 90 days looks like. Realistic. Quote "businesses in ${c.ind} typically recover 15–25% in 90 days."\n- Para 5: Mindset shift from reactive to systematic. What top ${c.ind} businesses do differently.\n<div class="stat-call">One real industry statistic with source name relevant to ${c.ind}.</div>\n<div class="disclaimer">All figures are estimates based on the ranges you provided. Actual results depend on your situation and implementation consistency.</div>`,
  
     BENCH:`${base}\nWrite ONLY the [BENCH] section. First line: [BENCH]\n\n<h4>How ${c.biz} Compares to ${c.bench.label}</h4>\nWrite 4 specific paragraphs — one per metric:\n1. Close rate: industry average ${c.bench.closeRate}% vs their ~${c.close}. Dollar impact of gap.\n2. Retention: industry average ${c.bench.retention}% vs their diagnostic answer. Dollar impact.\n3. Referrals: industry average ${c.bench.referralPct}% vs their answer. Dollar impact.\n4. Reviews: industry average ${c.bench.reviewCount} vs their count. Lead flow impact.\nFor each: state the gap, calculate the cost, give ONE action to close it in ${c.ind}.\nSource all data to: ${c.bench.source}\n<div class="stat-call">Businesses that close benchmark gaps in ${c.ind} typically do one thing differently: they systematize what top performers do instinctively.</div>`,
  
-    CONV:`${base}\nWrite ONLY the [CONV] section. First line: [CONV]\n\n<div class="quick-win">[One specific action THIS WEEK to improve lead conversion in ${c.ind}]</div>\n\n<h4>Close Rate Analysis</h4>\n<p>~${c.close} vs ~${c.bench.closeRate}% ${c.ind} benchmark (${c.bench.source}). Calculate gap and dollar impact. Reference CSO Insights.</p>\n<h4>Response Speed Gap</h4>\n<p>MIT/HBR 5-minute rule applied to ${c.ind}. Conservative impact. 3–4 sentences.</p>\n<h4>Follow-Up System Gap</h4>\n<p>Salesforce 80%/5-touch. Specific to ${c.ind}. 3–4 sentences.</p>\n<h4>5-Email Follow-Up Sequence</h4>\nCRITICAL: Write each email COMPLETE — no placeholders. 60–70 words each.\n<div class="script"><span class="slabel">Email 1 — Same Day (Subject: [specific subject for ${c.ind}])</span><p>[Complete 65-word email]</p></div>\n<div class="script"><span class="slabel">Email 2 — Day 2 (Subject: [specific subject])</span><p>[Complete 60-word email]</p></div>\n<div class="script"><span class="slabel">Email 3 — Day 5 (Subject: [specific subject])</span><p>[Complete 60-word email — addresses most common ${c.ind} objection]</p></div>\n<div class="script"><span class="slabel">Email 4 — Day 10 (Subject: [specific subject])</span><p>[Complete 55-word email — mild urgency]</p></div>\n<div class="script"><span class="slabel">Email 5 — Day 21 (Subject: Closing the loop)</span><p>[Complete 45-word breakup email]</p></div>`,
- 
-    DEAD:`${base}\nWrite ONLY the [DEAD] section. First line: [DEAD]\n\n<div class="quick-win">[One specific action THIS WEEK to re-engage cold leads in ${c.ind}]</div>\n\n<h4>Value in Your Pipeline</h4>\n<p>~${c.dead} leads × ${c.avgLo} avg × 12% re-engagement = approximately $[calculate]. 3 specific reasons leads go cold in ${c.ind}.</p>\n<h4>Re-Engagement Sequence</h4>\n<div class="script"><span class="slabel">Re-engagement Email (Subject: [specific to ${c.ind}])</span><p>[Complete 65-word email]</p></div>\n<div class="script"><span class="slabel">Follow-Up Text — 3 Days Later (under 140 chars)</span><p>[Complete text]</p></div>\n<div class="script"><span class="slabel">Final Email — Day 10 (Subject: Last one from us)</span><p>[Complete 45-word closing email]</p></div>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[ongoing]</li></ol></div>`,
+    CONV:`${base}\nWrite ONLY the [CONV] section. First line: [CONV]\n\n<div class="quick-win">[One specific action THIS WEEK to improve lead conversion in ${c.ind}]</div>\n\n<h4>Close Rate Analysis</h4>\n<p>~${c.close} vs ~${c.bench.closeRate}% ${c.ind} benchmark (${c.bench.source}). Calculate gap and dollar impact. Reference CSO Insights.</p>\n<h4>Response Speed Gap</h4>\n<p>MIT/HBR 5-minute rule applied to ${c.ind}. Conservative impact. 3–4 sentences.</p>\n<h4>Follow-Up System Gap</h4>\n<p>Salesforce 80%/5-touch. Specific to ${c.ind}. 3–4 sentences.</p>\n<h4>5-Email Follow-Up Sequence</h4>\nCRITICAL: Write each email COMPLETE — no placeholders. 60–70 words each.\n<div class="script"><span class="slabel">Email 1 — Same Day (Subject: [specific subject for ${c.ind}])</span><p>[Complete 65-word email]</p></div>\n<div class="script"><span class="slabel">Email 2 — Day 2 (Subject: [specific subject])</span><p>[Complete 60-word email]</p></div>\n<div class="script"><span class="slabel">Email 3 — Day 5 (Subject: [specific subject])</span><p>[Complete 60-word email — addresses most common ${c.ind} objection]</p></div>\n<div class="script"><span class="slabel">Email 4 — Day 10 (Subject: [specific subject])</span><p>[Complete 55-word email — mild urgency]</p></div>\n<div class="script"><span class="slabel">Email 5 — Day 21 (Subject: Closing the loop)</span><p>[Complete 45-word breakup email]</p></div>\n\nNOTE: The estimated current gap vs industry benchmark is ~$${c.L.cats.find(cat => cat.n.includes('conversion'))?.amt.toLocaleString()||'0'}. If this is $0, frame this section as a strength with ceiling upside — not a missed opportunity.`,
+
+
+    DEAD:`${base}\nWrite ONLY the [DEAD] section. First line: [DEAD]\n\n<div class="quick-win">[One specific action THIS WEEK to re-engage cold leads in ${c.ind}]</div>\n\n<h4>Value in Your Pipeline</h4>\n<p>~${c.dead} unconverted leads × ${c.avgLo} average × 12% re-engagement rate = approximately $${c.deadVal.toLocaleString()} in recoverable revenue. 3 specific reasons leads go cold in ${c.ind}.</p>\n<h4>Re-Engagement Sequence</h4>\n<div class="script"><span class="slabel">Re-engagement Email (Subject: [specific to ${c.ind}])</span><p>[Complete 65-word email]</p></div>\n<div class="script"><span class="slabel">Follow-Up Text — 3 Days Later (under 140 chars)</span><p>[Complete text]</p></div>\n<div class="script"><span class="slabel">Final Email — Day 10 (Subject: Last one from us)</span><p>[Complete 45-word closing email]</p></div>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[ongoing]</li></ol></div>`,
  
     MKTG:`${base}\nWrite ONLY the [MKTG] section. First line: [MKTG]\n\n<div class="quick-win">[One specific marketing action THIS WEEK for ${c.ind} — 30 minutes or less]</div>\n\n<h4>Marketing Diagnosis</h4>\n<p>Honest assessment based on their diagnostic. Specific to ${c.ind}.</p>\n<h4>The 2 Highest-ROI Channels for ${c.ind}</h4>\n<p>Name the 2 specific channels with data and source names. For each: why it works, how to implement, expected ROI.</p>\n<h4>30-Minute Weekly Content Framework</h4>\n<table><tr><th>Week</th><th>Content Type</th><th>Specific Topic for ${c.ind}</th><th>Platform</th></tr><tr><td>1</td><td>[type]</td><td>[specific real topic]</td><td>[platform]</td></tr><tr><td>2</td><td>[type]</td><td>[specific real topic]</td><td>[platform]</td></tr><tr><td>3</td><td>[type]</td><td>[specific real topic]</td><td>[platform]</td></tr><tr><td>4</td><td>[type]</td><td>[specific real topic]</td><td>[platform]</td></tr></table>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
  
-    RET:`${base}\nWrite ONLY the [RET] section. First line: [RET]\n\n<div class="quick-win">[One specific retention action THIS WEEK — call or email a specific type of past customer in ${c.ind}]</div>\n\n<h4>Customer Lifetime Value Estimate</h4>\n<p>${c.avgMid} avg × estimated annual frequency × lifespan = ~$[CLV]. Bain & Company: 5% retention = 25–95% profit growth. Industry average retention: ${c.bench.retention}% (${c.bench.source}). Conservative language.</p>\n<h4>The Retention Gap</h4>\n<p>Estimated annual cost of their retention gap. Why ${c.ind} customers stop returning. 3–4 sentences.</p>\n<h4>3-Step Retention System for ${c.ind}</h4>\n<p>Specific touchpoints, timing, channels. Not generic.</p>\n<div class="script"><span class="slabel">30-Day Post-Job Check-In (Email — 70 words)</span><p>[Full email — warm, specific to ${c.ind}]</p></div>\n<div class="script"><span class="slabel">6-Month Re-Engagement (Text — under 140 chars)</span><p>[Complete text]</p></div>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
+    RET:`${base}\nWrite ONLY the [RET] section. First line: [RET]\n\n<div class="quick-win">[One specific retention action THIS WEEK — call or email a specific type of past customer in ${c.ind}]</div>\n\n<h4>Customer Lifetime Value Estimate</h4>\n<p>${c.avgMid} avg × approximately 1.5 jobs/year × 4-year average retention = approximately $${clvEstimate} customer lifetime value. Bain & Company: 5% retention = 25–95% profit growth. Industry average retention: ${c.bench.retention}% (${c.bench.source}). Conservative language.</p>\n<h4>The Retention Gap</h4>\n<p>Estimated annual cost of their retention gap. Why ${c.ind} customers stop returning. 3–4 sentences.</p>\n<h4>3-Step Retention System for ${c.ind}</h4>\n<p>Specific touchpoints, timing, channels. Not generic.</p>\n<div class="script"><span class="slabel">30-Day Post-Job Check-In (Email — 70 words)</span><p>[Full email — warm, specific to ${c.ind}]</p></div>\n<div class="script"><span class="slabel">6-Month Re-Engagement (Text — under 140 chars)</span><p>[Complete text]</p></div>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
  
     REF:`${base}\nWrite ONLY the [REF] section. First line: [REF]\n\n<div class="quick-win">[One specific referral action THIS WEEK — ask a specific type of recent ${c.ind} customer]</div>\n\n<h4>The Referral Math for ${c.ind}</h4>\n<p>Each activated customer → ~1.2 referrals × ${c.avgLo} avg × ~55% conversion = ~$[calculate]. Industry referral average: ${c.bench.referralPct}% (${c.bench.source}). Texas Tech / Wharton: referred customers have 16–25% higher LTV.</p>\n<h4>The Systematic Referral Process for ${c.ind}</h4>\n<p>When to ask, how to ask, what to offer — specific to ${c.ind}. 2–3 sentences.</p>\n<div class="script"><span class="slabel">Referral Ask Script (word-for-word at job completion)</span><p>[Complete 75-word script — specific to ${c.ind}]</p></div>\n<div class="script"><span class="slabel">Referral Thank-You (Text — under 140 chars)</span><p>[Complete text]</p></div>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
  
-    PRICE:`${base}\nWrite ONLY the [PRICE] section. First line: [PRICE]\n\n<div class="quick-win">[One specific pricing action THIS WEEK — test a price increase on new quotes starting today]</div>\n\n<h4>The Pricing Opportunity</h4>\n<p>McKinsey: 1% price improvement = ~11% profit improvement. Conservative 6% adjustment on ${c.revLo} = approximately $[calculate] annually. How ${c.ind} businesses test increases without losing customers.</p>\n<h4>The Price Increase Test Methodology</h4>\n<p>How to safely test a 7–10% increase in ${c.ind}. What signals confirm it's working. 3–4 sentences.</p>\n<h4>Premium Tier Example for ${c.ind}</h4>\n<p>Specific Good / Better / Best structure — approximate prices, what each tier includes.</p>\n<div class="script"><span class="slabel">Price Increase Communication Script</span><p>[Complete 70-word script — confident, value-focused]</p></div>\n<div class="script"><span class="slabel">Premium Tier Presentation Script</span><p>[Complete 70-word script — presents 3 options naturally]</p></div>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
+    PRICE:`${base}\nWrite ONLY the [PRICE] section. First line: [PRICE]\n\n<div class="quick-win">[One specific pricing action THIS WEEK — test a price increase on new quotes starting today]</div>\n\n<h4>The Pricing Opportunity</h4>\n<p>McKinsey: 1% price improvement = ~11% profit improvement. Conservative 6% adjustment on ${c.revLo} = approximately $${priceUplift6} annually. At your revenue midpoint of ${c.revMid}, that same 6% move delivers approximately $${priceUplift6Mid}. How ${c.ind} businesses test increases without losing customers.</p>\n<h4>The Price Increase Test Methodology</h4>\n<p>How to safely test a 7–10% increase in ${c.ind}. What signals confirm it's working. 3–4 sentences.</p>\n<h4>Premium Tier Example for ${c.ind}</h4>\n<p>Specific Good / Better / Best structure — approximate prices, what each tier includes.</p>\n<div class="script"><span class="slabel">Price Increase Communication Script</span><p>[Complete 70-word script — confident, value-focused]</p></div>\n<div class="script"><span class="slabel">Premium Tier Presentation Script</span><p>[Complete 70-word script — presents 3 options naturally]</p></div>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
  
     REV:`${base}\nWrite ONLY the [REV] section. First line: [REV]\n\n<div class="quick-win">[One specific review action THIS WEEK — send review request to a specific group of recent customers]</div>\n\n<h4>The Review-to-Revenue Connection for ${c.ind}</h4>\n<p>BrightLocal: 93% of consumers check reviews. Moz: reviews account for ~15% of local search ranking. Industry average for ${c.bench.label}: ${c.bench.reviewCount} reviews (${c.bench.source}). Direct link between review volume and inbound lead flow in ${c.ind}.</p>\n<h4>Systematic Review Request Process</h4>\n<p>Exact timing, channel, message for ${c.ind}. When to ask, how to make it easy.</p>\n<div class="script"><span class="slabel">Review Request Text — 24–48 Hours After Completion (under 140 chars)</span><p>[Complete text with [your Google review link]]</p></div>\n<div class="script"><span class="slabel">Follow-Up If No Review — 5 Days Later (under 140 chars)</span><p>[Complete follow-up — gentle]</p></div>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
  
-    OPS:`${base}\nWrite ONLY the [OPS] section. First line: [OPS]\n\n<div class="quick-win">[One specific operations action THIS WEEK — document one process or implement one quality checkpoint in ${c.ind}]</div>\n\n<h4>The True Cost of Quality Issues in ${c.ind}</h4>\n<p>Each complaint costs 4–6x the transaction value. At ${c.avgLo} avg, each avoidable complaint costs approximately $[calculate]. Annual impact at their complaint rate.</p>\n<h4>The 3 Critical SOPs for ${c.ind}</h4>\n<p>Name and describe the 3 most impactful SOPs specifically for ${c.ind}. For each: what it covers, key steps, what breaks without it.</p>\n<h4>Quality Control in Practice</h4>\n<p>How top-performing ${c.ind} businesses build quality checkpoints without significant overhead. 2–3 sentences with a specific example.</p>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li></ol></div>`,
+    OPS:`${base}\nWrite ONLY the [OPS] section. First line: [OPS]\n\n<div class="quick-win">[One specific operations action THIS WEEK — document one process or implement one quality checkpoint in ${c.ind}]</div>\n\n<h4>The True Cost of Quality Issues in ${c.ind}</h4>\n<p>Each complaint costs 4–6× the original transaction value when you factor in rework, lost referrals, and reputation damage. At your average transaction of approximately ${c.avgMid}, each avoidable complaint costs approximately $${complaintCostLo}–$${complaintCostHi}. Annual impact at their complaint rate.</p>\n<h4>The 3 Critical SOPs for ${c.ind}</h4>\n<p>Name and describe the 3 most impactful SOPs specifically for ${c.ind}. For each: what it covers, key steps, what breaks without it.</p>\n<h4>Quality Control in Practice</h4>\n<p>How top-performing ${c.ind} businesses build quality checkpoints without significant overhead. 2–3 sentences with a specific example.</p>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li></ol></div>`,
  
     PRIORITY:`${base}\nWrite ONLY the [PRIORITY] section. First line: [PRIORITY]\n\n<h4>Priority Rankings for ${c.biz}</h4>\n<table><tr><th>Rank</th><th>Category</th><th>Est. Opportunity</th><th>Conservative 90-Day Target</th><th>First Action This Week</th></tr>\n${c.L.cats.map((cat,i)=>`<tr><td><strong>#${i+1}</strong></td><td>${cat.n}</td><td>~$${cat.amt.toLocaleString()}</td><td>$${Math.round(cat.amt*0.15).toLocaleString()}–$${Math.round(cat.amt*0.25).toLocaleString()}</td><td>[1 specific first step for ${c.ind}]</td></tr>`).join('\n')}\n</table>\n<p>Write 2 paragraphs explaining the sequencing strategy — why this order maximizes early results for ${c.biz} in ${c.ind}. Specific, conservative language.</p>`,
  
