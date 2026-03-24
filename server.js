@@ -104,7 +104,7 @@ app.post('/resend', async (req, res) => {
   if (!job) return res.status(404).json({ error: `No job found for ${email} — not in memory or Supabase` });
 
   if (job.completedHtml) {
-    const safeBizName = (bizName || job.bizName || 'Report');
+    const safeBizName = (job.bizName || 'Report');
     const pdfFilename = `${safeBizName.replace(/[^a-z0-9]/gi,'_')}_RevAnalysis_Report.pdf`;
 
     let pdfBase64 = job.completedPdf || null;
