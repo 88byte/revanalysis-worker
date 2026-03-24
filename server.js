@@ -270,6 +270,36 @@ async function updateSupabaseDelivered(email) {
   }
 }
 
+async function uploadPDFToSupabase(pdfBase64, filename) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  if (!url || !key) return null;
+
+  try {
+    const buffer = Buffer.from(pdfBase64, 'base64');
+    const r = await fetch(`${url}/storage/v1/object/reports/${filename}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/pdf',
+        'apikey': key,
+        'Authorization': `Bearer ${key}`,
+        'x-upsert': 'true'
+      },
+      body: buffer
+    });
+    if (!r.ok) {
+      const e = await r.text();
+      console.warn('PDF upload failed:', e.substring(0, 200));
+      return null;
+    }
+    // Return public URL
+    return `${url}/storage/v1/object/public/reports/${filename}`;
+  } catch(e) {
+    console.warn('PDF upload error:', e.message);
+    return null;
+  }
+}
+
 
 
  
@@ -280,9 +310,9 @@ async function generateAndSend({ email, firstName, lastName, title, bizName, ind
   const SECTION_KEYS = ['EXEC','BENCH','CONV','DEAD','MKTG','RET','REF','PRICE','REV','OPS','PRIORITY','PLAN','ROI'];
   const sections = {};
   const ctx = buildServerContext(bizName, industry, calcData, answers, firstName, lastName, title);
- 
+
   console.log(`Starting generation for ${bizName} (${email}) — ${SECTION_KEYS.length} sections`);
- 
+
   for (let i = 0; i < SECTION_KEYS.length; i++) {
     const key = SECTION_KEYS[i];
     console.log(`  Section ${i+1}/${SECTION_KEYS.length}: ${key}`);
@@ -306,25 +336,45 @@ async function generateAndSend({ email, firstName, lastName, title, bizName, ind
     }
     if (i < SECTION_KEYS.length - 1) await sleep(22000);
   }
- 
+
   console.log(`All sections done. Generating PDF...`);
   const reportHtml = buildEmailHtml(firstName, bizName, industry, calcData, sections);
- 
+  const pdfFilename = `${(bizName||'Report').replace(/[^a-z0-9]/gi,'_')}_RevAnalysis_Report.pdf`;
+
+  // Generate PDF
   let pdfBase64 = null;
   try {
     pdfBase64 = await generatePDF(reportHtml);
-    console.log('PDF generated');
+    console.log('✓ PDF generated');
   } catch(e) {
-    console.warn('PDF failed, sending without attachment:', e.message);
+    console.error('PDF generation failed:', e.message);
   }
- 
-  const pdfFilename = `${(bizName||'Report').replace(/[^a-z0-9]/gi,'_')}_RevAnalysis_Report.pdf`;
-  await sendEmail({ to: email, firstName, bizName, reportHtml, pdfBase64, pdfFilename });
+
+  // Upload to Supabase Storage — send link instead of attachment
+  let pdfUrl = null;
+  if (pdfBase64) {
+    pdfUrl = await uploadPDFToSupabase(pdfBase64, pdfFilename);
+    if (pdfUrl) {
+      console.log(`✓ PDF uploaded to Supabase: ${pdfUrl}`);
+    } else {
+      console.warn('PDF upload failed — falling back to attachment');
+    }
+  }
+
+  // Send email — link if uploaded, attachment as fallback
+  await sendEmail({
+    to: email, firstName, bizName, reportHtml,
+    pdfBase64: pdfUrl ? null : pdfBase64,
+    pdfFilename,
+    pdfUrl
+  });
+
   jobStore[email].completedHtml = reportHtml;
   jobStore[email].completedPdf = pdfBase64;
   jobStore[email].completedAt = new Date().toISOString();
   console.log(`✓ Email sent to ${email}`);
-  updateSupabaseDelivered(email); // ← ADD THIS
+
+  updateSupabaseDelivered(email);
 }
  
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -924,15 +974,39 @@ async function generatePDF(html) {
   return Buffer.from(buffer).toString('base64');
 }
  
-async function sendEmail({ to, firstName, bizName, reportHtml, pdfBase64, pdfFilename }) {
+async function sendEmail({ to, firstName, bizName, reportHtml, pdfBase64, pdfFilename, pdfUrl }) {
   const greeting = firstName ? `, ${firstName}` : '';
+  
+  // Add download button to top of email if we have a URL
+  const downloadBanner = pdfUrl ? `
+    <div style="background:#0f1f3d;padding:16px 24px;text-align:center;margin-bottom:0;">
+      <a href="${pdfUrl}" style="display:inline-block;background:#ff6b6b;color:white;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;padding:12px 32px;border-radius:6px;text-decoration:none;">
+        ⬇ Download Your PDF Report
+      </a>
+      <p style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:rgba(255,255,255,.4);margin:8px 0 0;">
+        Your PDF is ready — click above to download
+      </p>
+    </div>` : '';
+
+  const finalHtml = reportHtml.replace('<div class="wrap">', `${downloadBanner}<div class="wrap">`);
+
   const payload = {
     from: 'RevAnalysis <reports@revanalysis.com>',
     to: [to],
     subject: `Your RevAnalysis Report is ready${greeting} — ${bizName}`,
-    html: reportHtml
+    html: finalHtml
   };
-  if (pdfBase64) payload.attachments = [{ filename:pdfFilename, content:pdfBase64, type:'application/pdf', disposition:'attachment' }];
+
+  // Only attach PDF if we couldn't upload it
+  if (pdfBase64 && !pdfUrl) {
+    payload.attachments = [{ 
+      filename: pdfFilename, 
+      content: pdfBase64, 
+      type: 'application/pdf', 
+      disposition: 'attachment' 
+    }];
+  }
+
   const r = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${process.env.RESEND_API_KEY}` },
