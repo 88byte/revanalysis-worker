@@ -106,23 +106,39 @@ app.post('/resend', async (req, res) => {
   if (job.completedHtml) {
     const pdfFilename = `${(job.bizName||'Report').replace(/[^a-z0-9]/gi,'_')}_RevAnalysis_Report.pdf`;
 
-    // Regenerate PDF if not cached (e.g. after Railway restart)
     let pdfBase64 = job.completedPdf || null;
     if (!pdfBase64) {
       console.log(`PDF not cached for ${email} — regenerating...`);
       try {
         pdfBase64 = await generatePDF(job.completedHtml);
-        job.completedPdf = pdfBase64; // cache it back
+        job.completedPdf = pdfBase64;
         console.log(`✓ PDF regenerated for ${email}`);
       } catch(e) {
-        console.warn(`PDF regeneration failed for ${email}:`, e.message);
+        console.error(`PDF regeneration failed for ${email}:`, e.message);
       }
     }
 
-    sendEmail({ to: email, firstName: job.firstName||'', bizName: job.bizName, reportHtml: job.completedHtml, pdfBase64, pdfFilename })
+    // Try to upload to Supabase — send link instead of attachment
+    let pdfUrl = null;
+    if (pdfBase64) {
+      pdfUrl = await uploadPDFToSupabase(pdfBase64, pdfFilename);
+      if (pdfUrl) {
+        console.log(`✓ PDF uploaded to Supabase for resend: ${pdfUrl}`);
+      } else {
+        console.warn('PDF upload failed on resend — falling back to attachment');
+      }
+    }
+
+    sendEmail({
+      to: email, firstName: job.firstName||'', bizName: job.bizName,
+      reportHtml: job.completedHtml,
+      pdfBase64: pdfUrl ? null : pdfBase64,
+      pdfFilename,
+      pdfUrl
+    })
       .then(() => console.log(`✓ Instant resend complete for ${email}`))
       .catch(e => console.error(`Resend email failed:`, e.message));
-    return res.status(200).json({ queued: false, instant: true, email, message: 'Report resent with PDF attachment' });
+    return res.status(200).json({ queued: false, instant: true, email, message: 'Report resent with PDF link' });
   }
 
   enqueue({ ...job });
