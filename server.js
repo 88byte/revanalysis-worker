@@ -386,7 +386,7 @@ async function generateAndSend({ email, firstName, lastName, title, bizName, ind
     const batchStart = Date.now();
 
     await Promise.all(batch.map(async (key) => {
-      const LONG_SECTIONS = new Set(['HIRE','ACQUIRE','SCALE','CHECKLIST','ROADMAP','TECH','ASSETS']);
+      const LONG_SECTIONS = new Set(['KPI','HIRE','ACQUIRE','SCALE','CHECKLIST','ROADMAP','TECH','ASSETS']);
       let attempt = 0;
       while (attempt < 3) {
         try {
