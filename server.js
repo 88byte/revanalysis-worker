@@ -1664,7 +1664,7 @@ app.listen(PORT, async () => {
   try {
     const since = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
     const r = await fetch(
-      `${url}/rest/v1/diagnostics?report_delivered=eq.false&created_at=gte.${since}&order=created_at.asc`,
+      `${url}/rest/v1/diagnostics?report_delivered=eq.false&email=neq.&created_at=gte.${since}&order=created_at.asc`,
       { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } }
     );
     if (!r.ok) { console.warn('Job recovery query failed:', r.status); return; }
