@@ -183,6 +183,7 @@ app.post('/generate', (req, res) => {
     title: title||'',
     biz_name: bizName,
     industry,
+    city: city||'',
     revenue_range: calcData?.meta?.revLabel||'',
     revenue_mid: calcData?.meta?.revMid||0,
     avg_transaction_mid: calcData?.meta?.avgMid||0,
@@ -242,6 +243,40 @@ async function saveToSupabase(data) {
   if (!url || !key) { console.warn('Supabase env vars missing — skipping save'); return; }
 
   try {
+    // If we have an email, try to find an existing row from the quiz save
+    // (same biz + first name, no email yet) and update it instead of inserting
+    if (data.email) {
+      const findR = await fetch(
+        `${url}/rest/v1/diagnostics?biz_name=eq.${encodeURIComponent(data.biz_name)}&first_name=eq.${encodeURIComponent(data.first_name)}&email=eq.&order=created_at.desc&limit=1&select=id`,
+        { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } }
+      );
+      if (findR.ok) {
+        const rows = await findR.json();
+        if (rows && rows.length > 0) {
+          // Found existing quiz row — update it with email + paid data
+          const patchR = await fetch(
+            `${url}/rest/v1/diagnostics?id=eq.${rows[0].id}`,
+            {
+              method: 'PATCH',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': key,
+                'Authorization': `Bearer ${key}`
+              },
+              body: JSON.stringify(data)
+            }
+          );
+          if (patchR.ok) {
+            console.log(`✓ Updated existing quiz row for ${data.email}`);
+          } else {
+            console.warn(`Supabase patch failed ${patchR.status}`);
+          }
+          return;
+        }
+      }
+    }
+
+    // No existing row found — insert fresh
     const r = await fetch(`${url}/rest/v1/diagnostics`, {
       method: 'POST',
       headers: {
