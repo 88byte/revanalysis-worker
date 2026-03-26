@@ -171,7 +171,7 @@ app.get('/jobs', (req, res) => {
 });
  
 app.post('/generate', (req, res) => {
-  const { email, firstName, lastName, title, bizName, industry, city, calcData, answers, consentBenchmark } = req.body;
+  const { email, firstName, lastName, title, bizName, industry, city, calcData, answers, consentBenchmark, paidAt } = req.body;
   if (!email || !calcData) return res.status(400).json({ error: 'Missing required fields' });
   jobStore[email] = { email, firstName:firstName||'', lastName:lastName||'', title:title||'', bizName, industry, city:city||'', calcData, answers, consentBenchmark:consentBenchmark||false, savedAt: new Date().toISOString() };
   
@@ -197,6 +197,7 @@ app.post('/generate', (req, res) => {
     answers: answers||{},
     consent_benchmark: consentBenchmark||false,
     report_delivered: false,
+    paid_at: paidAt || null,   // ← ADD THIS LINE
   }).catch(e => console.warn('Supabase intake save failed:', e.message));
 
   enqueue({ email, firstName:firstName||'', lastName:lastName||'', title:title||'', city:city||'', bizName, industry, calcData, answers, consentBenchmark:consentBenchmark||false });
