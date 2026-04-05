@@ -248,7 +248,7 @@ async function saveToSupabase(data) {
     // (same biz + first name, no email yet) and update it instead of inserting
     if (data.email) {
       const findR = await fetch(
-        `${url}/rest/v1/diagnostics?biz_name=eq.${encodeURIComponent(data.biz_name)}&first_name=eq.${encodeURIComponent(data.first_name)}&email=eq.&order=created_at.desc&limit=1&select=id`,
+        `${url}/rest/v1/diagnostics?email=eq.${encodeURIComponent(data.email)}&order=created_at.desc&limit=1&select=id`,
         { headers: { 'apikey': key, 'Authorization': `Bearer ${key}` } }
       );
       if (findR.ok) {
