@@ -1690,6 +1690,207 @@ Write a detailed, week-by-week 90-day roadmap specific to ${c.biz} — a ${c.ind
 //  START SERVER + RECOVER PENDING JOBS FROM SUPABASE
 // ══════════════════════════════════════════════════
 const PORT = process.env.PORT || 3001;
+const CRON_TOKEN = process.env.CRON_TOKEN;
+const ADMIN_KEY  = process.env.ADMIN_KEY;
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+
+// Pricing source of truth for MRR calc. Update if plans change.
+const PLAN_CENTS = { monthly: 9700, yearly: 89700 };
+function monthlyCents(plan) {
+  if (plan === 'yearly') return Math.round(PLAN_CENTS.yearly / 12);
+  if (plan === 'monthly') return PLAN_CENTS.monthly;
+  return 0;
+}
+
+async function _sb(method, path, body) {
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_KEY;
+  const r = await fetch(`${url}/rest/v1/${path}`, {
+    method,
+    headers: {
+      apikey: key,
+      Authorization: `Bearer ${key}`,
+      'Content-Type': 'application/json',
+      Prefer: method === 'PATCH' ? 'return=minimal' : 'count=exact'
+    },
+    body: body ? JSON.stringify(body) : undefined
+  });
+  if (!r.ok) {
+    const txt = await r.text();
+    throw new Error(`Supabase ${method} ${path} -> ${r.status} ${txt.slice(0, 200)}`);
+  }
+  if (method === 'PATCH') return true;
+  return r.json();
+}
+const sbGet   = (p)      => _sb('GET', p);
+const sbPatch = (p, b)   => _sb('PATCH', p, b);
+
+async function sendResend({ to, subject, html }) {
+  if (!RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY missing, skipping email to', to);
+    return false;
+  }
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${RESEND_API_KEY}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      from: 'RevAnalysis <support@revanalysis.com>',
+      to, subject, html
+    })
+  });
+  if (!r.ok) {
+    const t = await r.text();
+    console.warn(`Resend send failed for ${to}: ${r.status} ${t.slice(0, 200)}`);
+    return false;
+  }
+  return true;
+}
+
+function requireCronToken(req, res) {
+  if (!CRON_TOKEN || req.headers['x-cron-token'] !== CRON_TOKEN) {
+    res.status(401).json({ error: 'unauthorized' });
+    return false;
+  }
+  return true;
+}
+
+function requireAdminKey(req, res) {
+  const auth = req.headers.authorization || '';
+  if (!ADMIN_KEY || auth !== `Bearer ${ADMIN_KEY}`) {
+    res.status(401).json({ error: 'unauthorized' });
+    return false;
+  }
+  return true;
+}
+
+// ----------------------------------------------------------------
+// POST /cron/daily-email
+// Fires once per morning. For each active/trialing subscriber,
+// picks the next action that is not completed AND not yet emailed,
+// ordered by sequence_order ascending, and emails it via Resend.
+// Marks emailed_at so tomorrow it moves on to the next action.
+// ----------------------------------------------------------------
+app.post('/cron/daily-email', async (req, res) => {
+  if (!requireCronToken(req, res)) return;
+  try {
+    const subs = await sbGet(`subscribers?status=in.(active,trialing)&select=id,email,biz_name`);
+    let sent = 0, noAction = 0, failed = 0;
+    for (const s of subs) {
+      const actions = await sbGet(
+        `action_queue?subscriber_id=eq.${s.id}&completed_at=is.null&emailed_at=is.null&order=sequence_order.asc&limit=1&select=id,title,body_html,script_html,dollar_impact`
+      );
+      if (!actions.length) { noAction++; continue; }
+      const a = actions[0];
+      const subject = a.title || "Today's RevAnalysis action";
+      const html = `
+        <div style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width:600px; margin:0 auto;">
+          <h2 style="color:#0f1117;">${a.title || "Today's action"}</h2>
+          ${a.dollar_impact ? `<p style="color:#10b981; font-weight:600;">Estimated impact: $${Number(a.dollar_impact).toLocaleString()}</p>` : ''}
+          <div>${a.body_html || ''}</div>
+          ${a.script_html ? `<h3 style="margin-top:24px;">Script</h3><div>${a.script_html}</div>` : ''}
+          <p style="margin-top:32px;"><a href="https://www.revanalysis.com/dashboard" style="background:#10b981; color:#fff; padding:12px 20px; text-decoration:none; border-radius:6px; display:inline-block;">Open dashboard</a></p>
+          <p style="color:#6b7280; font-size:12px; margin-top:40px;">RevAnalysis coaching. Reply to unsubscribe or get help.</p>
+        </div>`;
+      const ok = await sendResend({ to: s.email, subject, html });
+      if (ok) {
+        await sbPatch(`action_queue?id=eq.${a.id}`, { emailed_at: new Date().toISOString() });
+        sent++;
+      } else {
+        failed++;
+      }
+    }
+    res.json({ ok: true, eligible: subs.length, sent, noAction, failed });
+  } catch (e) {
+    console.error('daily-email error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ----------------------------------------------------------------
+// GET /admin/subscriptions
+// Returns counts, MRR in cents, recent signups. Bearer ADMIN_KEY.
+// ----------------------------------------------------------------
+app.get('/admin/subscriptions', async (req, res) => {
+  if (!requireAdminKey(req, res)) return;
+  try {
+    const all = await sbGet(
+      `subscribers?select=id,email,status,plan,biz_name,trial_start,trial_end,created_at&order=created_at.desc`
+    );
+    const counts = { active: 0, trialing: 0, canceled: 0, other: 0 };
+    let mrr_cents = 0;
+    for (const s of all) {
+      if (counts[s.status] != null) counts[s.status]++; else counts.other++;
+      if (s.status === 'active') mrr_cents += monthlyCents(s.plan);
+    }
+    const recent = all.slice(0, 20).map(s => ({
+      email: s.email,
+      status: s.status,
+      plan: s.plan,
+      biz_name: s.biz_name,
+      trial_end: s.trial_end,
+      created_at: s.created_at
+    }));
+    res.json({
+      ...counts,
+      total: all.length,
+      mrr_cents,
+      mrr_usd: Math.round(mrr_cents / 100),
+      recent
+    });
+  } catch (e) {
+    console.error('admin/subscriptions error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ----------------------------------------------------------------
+// POST /cron/trial-ending
+// Finds trialing subscribers whose trial ends in <= 48h and who
+// have NOT received a warning yet. Sends the warning and marks
+// trial_warning_sent_at so we never double-email.
+// ----------------------------------------------------------------
+app.post('/cron/trial-ending', async (req, res) => {
+  if (!requireCronToken(req, res)) return;
+  try {
+    const nowIso = new Date().toISOString();
+    const in48 = new Date(Date.now() + 48 * 3600 * 1000).toISOString();
+    const subs = await sbGet(
+      `subscribers?status=eq.trialing&trial_end=lte.${in48}&trial_end=gte.${nowIso}&trial_warning_sent_at=is.null&select=id,email,trial_end,biz_name`
+    );
+    let sent = 0, failed = 0;
+    for (const s of subs) {
+      const endDate = new Date(s.trial_end).toLocaleDateString('en-US', { month:'long', day:'numeric' });
+      const html = `
+        <div style="font-family:-apple-system, BlinkMacSystemFont, sans-serif; max-width:600px; margin:0 auto;">
+          <h2 style="color:#0f1117;">Your RevAnalysis trial ends ${endDate}</h2>
+          <p>${s.biz_name ? s.biz_name + ', your' : 'Your'} coaching continues automatically after the trial at $97/mo. No action needed.</p>
+          <p>If you want to cancel, manage it from your account tab before ${endDate}.</p>
+          <p style="margin-top:24px;"><a href="https://www.revanalysis.com/dashboard" style="background:#10b981; color:#fff; padding:12px 20px; text-decoration:none; border-radius:6px; display:inline-block;">Open dashboard</a></p>
+          <p style="color:#6b7280; font-size:12px; margin-top:40px;">Reply to this email with any questions.</p>
+        </div>`;
+      const ok = await sendResend({
+        to: s.email,
+        subject: `Your RevAnalysis trial ends ${endDate}`,
+        html
+      });
+      if (ok) {
+        await sbPatch(`subscribers?id=eq.${s.id}`, { trial_warning_sent_at: new Date().toISOString() });
+        sent++;
+      } else {
+        failed++;
+      }
+    }
+    res.json({ ok: true, eligible: subs.length, sent, failed });
+  } catch (e) {
+    console.error('trial-ending error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+
 app.listen(PORT, async () => {
   console.log(`RevAnalysis worker running on port ${PORT}`);
 
