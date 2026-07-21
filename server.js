@@ -361,19 +361,19 @@ async function uploadPDFToSupabase(pdfBase64, filename) {
 // ══════════════════════════════════════════════════
 async function generateAndSend({ email, firstName, lastName, title, bizName, industry, city, calcData, answers, consentBenchmark }) {
 
-  const SECTION_KEYS = ['EXEC','KPI','BENCH','LOCAL','COMPETE','CONV','DEAD','MKTG','RET','REF','PRICE','REV','OPS','TECH','ASSETS','SCALE','HIRE','ACQUIRE','CHECKLIST','PRIORITY','ROADMAP','ROI'];
+  const SECTION_KEYS = ['EXEC','KPI','BENCH','CASH','COMPETE','CONV','DEAD','SYSTEMS','RET','REF','PRICE','REV','OPS','LEVERAGE','TECH','ASSETS','SCALE','HIRE','ACQUIRE','CHECKLIST','PRIORITY','ROADMAP','ROI'];
 
   // Batches of 3 — safe for Tier 1 output TPM limits
   // Sequence matters: narrative sections first, dependent sections last
   const BATCHES = [
     ['EXEC', 'KPI', 'BENCH'],
-    ['LOCAL', 'COMPETE', 'CONV'],
-    ['DEAD', 'MKTG', 'RET'],
+    ['CASH', 'COMPETE', 'CONV'],
+    ['DEAD', 'SYSTEMS', 'RET'],
     ['REF', 'PRICE', 'REV'],
-    ['OPS', 'TECH', 'ASSETS'],
-    ['SCALE', 'HIRE', 'ACQUIRE'],
-    ['CHECKLIST', 'PRIORITY', 'ROADMAP'],
-    ['ROI']
+    ['OPS', 'LEVERAGE', 'TECH'],
+    ['ASSETS', 'SCALE', 'HIRE'],
+    ['ACQUIRE', 'CHECKLIST', 'PRIORITY'],
+    ['ROADMAP', 'ROI']
   ];
 
   const sections = {};
@@ -511,11 +511,11 @@ function svgLineChart(total) {
  
 function svgScoreChart(sc) {
   const cats=[
-    {label:'Conversion',score:sc.conversion,bench:65},{label:'Marketing',score:sc.marketing,bench:60},
-    {label:'Retention',score:sc.retention,bench:60},{label:'Referrals',score:sc.referrals,bench:55},
-    {label:'Pricing',score:sc.pricing,bench:60},{label:'Reviews',score:sc.reviews,bench:55},
-    {label:'Operations',score:sc.operations,bench:65},
-  ];
+    {label:'Conversion',score:sc.conversion,bench:65},{label:'Speed to lead',score:sc.speed,bench:60},
+    {label:'Retention',score:sc.retention,bench:60},{label:'Pricing',score:sc.pricing,bench:60},
+    {label:'Cash flow',score:sc.cashflow,bench:60},{label:'Operations',score:sc.operations,bench:65},
+    {label:'Owner leverage',score:sc.leverage,bench:55},
+  ].filter(c => typeof c.score === 'number' && !isNaN(c.score));
   const W=580,rowH=34,padL=90,padR=20,padT=16,barW=W-padL-padR,H=padT+cats.length*rowH+28;
   const rows=cats.map((cat,i)=>{
     const y=padT+i*rowH,yourW=Math.round((cat.score/100)*barW),benchX=padL+Math.round((cat.bench/100)*barW);
@@ -542,21 +542,22 @@ function buildEmailHtml(firstName, bizName, industry, calcData, sections) {
   const rec22 = Math.round(L.total * 0.22);
   const bench = getIndustryBenchmarks(industry);
  
-  const sectionKeys = ['EXEC','KPI','BENCH','LOCAL','COMPETE','CONV','DEAD','MKTG','RET','REF','PRICE','REV','OPS','TECH','ASSETS','SCALE','HIRE','ACQUIRE','CHECKLIST','PRIORITY','ROADMAP','ROI'];
+  const sectionKeys = ['EXEC','KPI','BENCH','CASH','COMPETE','CONV','DEAD','SYSTEMS','RET','REF','PRICE','REV','OPS','LEVERAGE','TECH','ASSETS','SCALE','HIRE','ACQUIRE','CHECKLIST','PRIORITY','ROADMAP','ROI'];
   const sectionTitles = {
     EXEC:'Executive Summary',
     KPI:'KPI Dashboard & Your Metrics',
     BENCH:'Industry Benchmark Analysis',
-    LOCAL:'Local Market & City Growth Opportunities',
-    COMPETE:'Competitive Analysis',
-    CONV:'Lead Conversion & Sales',
+    CASH:'Cash Flow & Job Costing',
+    COMPETE:'Competitive Benchmark Comparison',
+    CONV:'Close Rate & Sales Process',
     DEAD:'Dead & Dormant Leads',
-    MKTG:'Marketing Efficiency',
+    SYSTEMS:'Systems & Automation Audit',
     RET:'Customer Retention',
     REF:'Referral Generation',
     PRICE:'Pricing Power',
-    REV:'Reviews & Visibility',
-    OPS:'Operations & Quality',
+    REV:'Reviews & Reputation System',
+    OPS:'Capacity, Scheduling & Quality',
+    LEVERAGE:'Owner Leverage',
     TECH:'Tech & Software Stack',
     ASSETS:'Assets & Business Value',
     SCALE:'Scaling Strategy',
@@ -567,7 +568,7 @@ function buildEmailHtml(firstName, bizName, industry, calcData, sections) {
     ROADMAP:'90-Day Structured Roadmap',
     ROI:'Revenue Recovery Projection'
   };
-  const catKeyMap = { CONV:'conversion', DEAD:'dormant', MKTG:'Marketing', RET:'retention', REF:'Referral', PRICE:'Pricing', REV:'Reviews', OPS:'Operations' };
+  const catKeyMap = { CONV:'Close rate', DEAD:'dormant', RET:'Retention', PRICE:'Pricing', CASH:'Cash', OPS:'Capacity', LEVERAGE:'Owner leverage' };
  
   const css = `
 /* ── Reset ── */
@@ -1071,11 +1072,11 @@ ul li {
     {label:'Close Rate',you:yourClose+'%',bench:bench.closeRate+'%',youN:yourClose,benchN:bench.closeRate},
     {label:'Retention',you:'~'+Math.round((L.meta.retRate||0.15)*100)+'%',bench:bench.retention+'%',youN:Math.round((L.meta.retRate||0.15)*100),benchN:bench.retention},
     {label:'Referrals',you:'~'+Math.round((L.meta.refRate||0.10)*100)+'%',bench:bench.referralPct+'%',youN:Math.round((L.meta.refRate||0.10)*100),benchN:bench.referralPct},
-    {label:'Google Reviews',
-      you:`~${L.meta.reviewBandN||20}`,
-      bench:`avg ${bench.reviewCount}`,
-      youN:L.meta.reviewBandN||20,
-      benchN:bench.reviewCount},  ];
+    {label:'Sales Process Score',
+      you:`${(L.sc&&L.sc.conversion)||50}`,
+      bench:'avg 65',
+      youN:(L.sc&&L.sc.conversion)||50,
+      benchN:65},  ];
   const bmHtml = `<div class="bench-strip">
     <div class="bench-head">Industry comparison — ${bench.label} (Source: ${bench.source})</div>
     <div class="bench-row">${bm.map(m=>{
@@ -1111,6 +1112,25 @@ ul li {
     </div>`;
   });
  
+  // Final contact/booking section — the audit ends with the consultant, not an upsell
+  const contactHtml = `<div class="rsec">
+    <div class="rsec-head">
+      <div class="rsec-left"><div class="sec-num">${String(sectionKeys.filter(k=>sections[k]).length + 1).padStart(2,'0')}</div><div class="rsec-title">Work With The Operator Behind This Audit</div></div>
+    </div>
+    <div class="rsec-body">
+      <p>This audit was built by an operator, not a marketing agency. The same person who wrote the diagnostic math walks businesses through fixing it: systems and AI automation, customer experience, sales process, and day-to-day operations. No ad budgets, no content calendars. Just the operational fixes quantified in the sections above.</p>
+      <h4>Your 30-Minute Walkthrough Call Is Included</h4>
+      <p>Every Revenue Leak Audit includes a 30-minute walkthrough call. Bring this report. We will confirm your top leak, sanity-check the numbers against your real books, and leave you with the first three moves in order. Book your call here: <strong>{{BOOKING_URL}}</strong></p>
+      <h4>If You Want The Fixes Implemented For You</h4>
+      <ul>
+        <li><strong>Systems & automation:</strong> follow-up sequences, quoting, invoicing, and admin automated so the leaks stay closed.</li>
+        <li><strong>Sales process:</strong> speed-to-lead, structured follow-up, and close-rate discipline installed and measured.</li>
+        <li><strong>Operations & CX:</strong> scheduling, job costing, collections, and the SOPs that let the business run without you.</li>
+      </ul>
+      <p>Book directly at <strong>{{BOOKING_URL}}</strong> or email <strong>{{CONTACT_EMAIL}}</strong> with the subject line "Audit walkthrough" and your business name. Replies within one business day.</p>
+    </div>
+  </div>`;
+
   const legalHtml = `<div style="background:#f8f9fc;border:1px solid #e4e8f0;border-radius:10px;padding:22px;margin-bottom:16px;">
     <div style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8d97aa;margin-bottom:12px;">Important Notices & Disclaimers</div>
     <p style="font-size:12px;color:#5a6478;line-height:1.7;margin-bottom:8px;"><strong style="color:#0f1f3d;">No Refund Policy:</strong> This report is a personalised, AI-generated diagnostic document. All sales are final once delivered.</p>
@@ -1157,9 +1177,9 @@ ul li {
         </div>
         <div style="width:1px;background:rgba(255,255,255,.08);"></div>
         <div>
-          <div style="font-family:Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:4px;">Report ROI</div>
-          <div style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#6ea8fe;">${Math.round(Math.round(L.total*0.22)/497)}x</div>
-          <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.3);margin-top:2px;">Return on $497 investment</div>
+          <div style="font-family:Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:4px;">Walkthrough Call</div>
+          <div style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#6ea8fe;">30 min</div>
+          <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.3);margin-top:2px;">Included with your audit</div>
         </div>
       </div>
     </div>
@@ -1180,16 +1200,17 @@ ul li {
     <div class="kpi-cell"><div class="kpi-val" style="color:#dc2626;">~$${L.total.toLocaleString()}</div><div class="kpi-lbl">Est. annual opportunity</div></div>
     <div class="kpi-cell"><div class="kpi-val" style="color:#6ea8fe;">~$${L.cats[0].amt.toLocaleString()}</div><div class="kpi-lbl">Biggest opportunity</div></div>
     <div class="kpi-cell"><div class="kpi-val" style="color:#16a34a;">~$${rec22.toLocaleString()}</div><div class="kpi-lbl">Realistic 90-day target</div></div>
-    <div class="kpi-cell"><div class="kpi-val" style="color:#6ea8fe;">${Math.round(rec22/497)}x</div><div class="kpi-lbl">Est. report ROI</div></div>
+    <div class="kpi-cell"><div class="kpi-val" style="color:#6ea8fe;">30 min</div><div class="kpi-lbl">Walkthrough call included</div></div>
   </div></div>
   ${bmHtml}
   ${chartSection}
   ${sectionsHtml}
+  ${contactHtml}
   ${legalHtml}
   <div class="footer">
-    <h3>Your report is complete</h3>
+    <h3>Your audit is complete</h3>
     <p>Generated by RevAnalysis &middot; ${date}</p>
-    <p>All figures are conservative estimates. PDF copy attached to this email.</p>
+    <p>All figures are conservative estimates. PDF copy attached to this email. Your 30-minute walkthrough call is included: book it at {{BOOKING_URL}}.</p>
   </div>
 </div></body></html>`;
 }
@@ -1290,7 +1311,7 @@ function parseSecs(txt) {
 function buildServerContext(bizName, industry, calcData, answers, firstName, lastName, title, city) {
   const L = calcData, a = answers || {};
   const top3 = L.cats.slice(0,3).map(c=>`${c.n} (~$${c.amt.toLocaleString()})`).join(', ');
-  const goalOpts = ['Get more consistent inbound leads','Convert more leads into paying customers','Get past customers buying again','Build a referral system that works automatically','Raise prices without losing customers','Fix quality and stop losing money on errors'];
+  const goalOpts = ['Convert more of the leads I already get','Stop leads slipping through the cracks','Get past customers buying again','Raise prices without losing customers','Get paid faster and fix cash flow','Get the business running without me'];
   const goal = goalOpts[a.topGoal??0] || 'growing revenue';
   const bench = getIndustryBenchmarks(industry);
   return {
@@ -1302,6 +1323,12 @@ function buildServerContext(bizName, industry, calcData, answers, firstName, las
     // In the return object, add:
     teamSize: a.teamSize !== undefined ? [1,2,5,12,25][Math.min(a.teamSize,4)] : 3,
     deadVal: Math.round((L.meta.dead || 20) * 0.12 * (parseInt(String(L.meta.avgLo).replace(/[$,]/g,'')) || 0)),
+    // Ops diagnostic context (funnel-v3 quiz answers; safe defaults for older payloads)
+    adminH: L.meta.adminH !== undefined ? L.meta.adminH : (a.adminHours !== undefined ? [3,7,15,25][Math.min(a.adminHours,3)] : 8),
+    payLabel: ['same day or upfront','within 2 weeks','2-6 weeks','60+ days'][Math.min(a.paymentDays??1,3)],
+    jobCostingLabel: ['unknown. bank balance only','rough gut feel','known for main services','tracked per job type'][Math.min(a.jobCosting??1,3)],
+    schedLabel: ['chaotic with frequent callbacks','loose with weekly lost time','decent with occasional gaps','tight and optimized'][Math.min(a.schedEff??1,3)],
+    ownerDepLabel: ['everything stalls without the owner','major issues and firefighting','minor hiccups. team covers most of it','runs fine without the owner'][Math.min(a.ownerDep??1,3)],
     total:`~$${L.total.toLocaleString()}`, totalRange:`$${L.totalLo.toLocaleString()}–$${L.totalHi.toLocaleString()}`,
     top3, goal, bench,
     cats:L.cats.map(c=>`${c.n}: ~$${c.amt.toLocaleString()} (${c.desc})`).join('\n'),
@@ -1322,6 +1349,8 @@ CLIENT DATA:
 - Total opportunity: ${c.total} (range: ${c.totalRange})
 - Top 3: ${c.top3} | Scores: ${c.scores} | Goal: ${c.goal}
 - Team size: ~${c.teamSize} people
+- Manual admin: ~${c.adminH} hrs/week | Payment collection: ${c.payLabel} | Job costing: ${c.jobCostingLabel}
+- Scheduling: ${c.schedLabel} | Owner dependence: ${c.ownerDepLabel}
  
 INDUSTRY BENCHMARKS (${c.bench.label} — ${c.bench.source}):
 - Close rate: ${c.bench.closeRate}% | Retention: ${c.bench.retention}% | Referrals: ${c.bench.referralPct}% | Reviews: ${c.bench.reviewCount}
@@ -1340,7 +1369,7 @@ RULES — NON-NEGOTIABLE:
 9. Scripts: complete, word-for-word, zero placeholders.
 10. Use "estimated"/"approximately" for all figures.
 11. Specific to ${c.ind}. Not generic.
-12. Cite by source name: Bain & Company, McKinsey, Salesforce, HBR, BrightLocal, etc.
+12. Cite by source name: Bain & Company, McKinsey, Salesforce, HBR, CSO Insights, etc.
 13. Recovery: "businesses in ${c.ind} that fix this typically recover 15–25% in 90 days."
 14. Reference benchmarks: "The average ${c.ind} business closes ${c.bench.closeRate}%. You're at X%. That gap costs $Y."
 15. START every section (except EXEC and BENCH) with: <div class="quick-win">⚡ Quick Win — [One specific action THIS WEEK — concrete, ${c.ind}-specific, doable in under 1 hour]</div>
@@ -1363,14 +1392,14 @@ function buildSectionPrompt(key, c) {
   const prompts = {
     EXEC:`${base}\nWrite ONLY the [EXEC] section. First line: [EXEC]\n\n5 focused paragraphs (~280 words):\n- Para 1: Open with ~${c.total} opportunity (range: ${c.totalRange}). Conservative language. Compelling ${c.ind}-specific analogy.\n- Para 2: Why ${c.ind} businesses specifically lose revenue this way — structural reasons.\n- Para 3: Top 3 opportunities: ${c.top3}. Dollar context and interconnection.\n- Para 4: What the next 90 days looks like. Realistic. Quote "businesses in ${c.ind} typically recover 15–25% in 90 days."\n- Para 5: Mindset shift from reactive to systematic. What top ${c.ind} businesses do differently.\n<div class="stat-call">One real industry statistic with source name relevant to ${c.ind}.</div>\n<div class="disclaimer">All figures are estimates based on the ranges you provided. Actual results depend on your situation and implementation consistency.</div>`,
  
-    BENCH:`${base}\nWrite ONLY the [BENCH] section. First line: [BENCH]\n\n<h4>How ${c.biz} Compares to ${c.bench.label}</h4>\nWrite 4 specific paragraphs — one per metric:\n1. Close rate: industry average ${c.bench.closeRate}% vs their ~${c.close}. Dollar impact of gap.\n2. Retention: industry average ${c.bench.retention}% vs their diagnostic answer. Dollar impact.\n3. Referrals: industry average ${c.bench.referralPct}% vs their answer. Dollar impact.\n4. Reviews: industry average ${c.bench.reviewCount} vs their count. Lead flow impact.\nFor each: state the gap, calculate the cost, give ONE action to close it in ${c.ind}.\nSource all data to: ${c.bench.source}\n<div class="stat-call">Businesses that close benchmark gaps in ${c.ind} typically do one thing differently: they systematize what top performers do instinctively.</div>`,
+    BENCH:`${base}\nWrite ONLY the [BENCH] section. First line: [BENCH]\n\n<h4>How ${c.biz} Compares to ${c.bench.label}</h4>\nWrite 4 specific paragraphs — one per metric:\n1. Close rate: industry average ${c.bench.closeRate}% vs their ~${c.close}. Dollar impact of gap.\n2. Retention: industry average ${c.bench.retention}% vs their diagnostic answer. Dollar impact.\n3. Referrals: industry average ${c.bench.referralPct}% vs their answer. Dollar impact.\n4. Payment collection: their typical collection is ${c.payLabel}. The operational standard is payment within 14 days. Cash flow and write-off impact.\nFor each: state the gap, calculate the cost, give ONE action to close it in ${c.ind}.\nSource metrics 1-3 to: ${c.bench.source}\n<div class="stat-call">Businesses that close benchmark gaps in ${c.ind} typically do one thing differently: they systematize what top performers do instinctively.</div>`,
  
-    CONV:`${base}\nWrite ONLY the [CONV] section. First line: [CONV]\n\n<div class="quick-win">[One specific action THIS WEEK to improve lead conversion in ${c.ind}]</div>\n\n<h4>Close Rate Analysis</h4>\n<p>~${c.close} vs ~${c.bench.closeRate}% ${c.ind} benchmark (${c.bench.source}). Calculate gap and dollar impact. Reference CSO Insights.</p>\n<h4>Response Speed Gap</h4>\n<p>MIT/HBR 5-minute rule applied to ${c.ind}. Conservative impact. 3–4 sentences.</p>\n<h4>Follow-Up System Gap</h4>\n<p>Salesforce 80%/5-touch. Specific to ${c.ind}. 3–4 sentences.</p>\n<h4>5-Email Follow-Up Sequence</h4>\nCRITICAL: Write each email COMPLETE — no placeholders. 60–70 words each.\n<div class="script"><span class="slabel">Email 1 — Same Day (Subject: [specific subject for ${c.ind}])</span><p>[Complete 65-word email]</p></div>\n<div class="script"><span class="slabel">Email 2 — Day 2 (Subject: [specific subject])</span><p>[Complete 60-word email]</p></div>\n<div class="script"><span class="slabel">Email 3 — Day 5 (Subject: [specific subject])</span><p>[Complete 60-word email — addresses most common ${c.ind} objection]</p></div>\n<div class="script"><span class="slabel">Email 4 — Day 10 (Subject: [specific subject])</span><p>[Complete 55-word email — mild urgency]</p></div>\n<div class="script"><span class="slabel">Email 5 — Day 21 (Subject: Closing the loop)</span><p>[Complete 45-word breakup email]</p></div>\n\nNOTE: The estimated current gap vs industry benchmark is ~$${c.L.cats.find(cat => cat.n.includes('conversion'))?.amt.toLocaleString()||'0'}. If this is $0, frame this section as a strength with ceiling upside — not a missed opportunity.`,
+    CONV:`${base}\nWrite ONLY the [CONV] section. First line: [CONV]\n\n<div class="quick-win">[One specific action THIS WEEK to improve lead conversion in ${c.ind}]</div>\n\n<h4>Close Rate Analysis</h4>\n<p>~${c.close} vs ~${c.bench.closeRate}% ${c.ind} benchmark (${c.bench.source}). Calculate gap and dollar impact. Reference CSO Insights.</p>\n<h4>Response Speed Gap</h4>\n<p>MIT/HBR 5-minute rule applied to ${c.ind}. Conservative impact. 3–4 sentences.</p>\n<h4>Follow-Up System Gap</h4>\n<p>Salesforce 80%/5-touch. Specific to ${c.ind}. 3–4 sentences.</p>\n<h4>5-Email Follow-Up Sequence</h4>\nCRITICAL: Write each email COMPLETE — no placeholders. 60–70 words each.\n<div class="script"><span class="slabel">Email 1 — Same Day (Subject: [specific subject for ${c.ind}])</span><p>[Complete 65-word email]</p></div>\n<div class="script"><span class="slabel">Email 2 — Day 2 (Subject: [specific subject])</span><p>[Complete 60-word email]</p></div>\n<div class="script"><span class="slabel">Email 3 — Day 5 (Subject: [specific subject])</span><p>[Complete 60-word email — addresses most common ${c.ind} objection]</p></div>\n<div class="script"><span class="slabel">Email 4 — Day 10 (Subject: [specific subject])</span><p>[Complete 55-word email — mild urgency]</p></div>\n<div class="script"><span class="slabel">Email 5 — Day 21 (Subject: Closing the loop)</span><p>[Complete 45-word breakup email]</p></div>\n\nNOTE: The estimated current gap vs industry benchmark is ~$${c.L.cats.find(cat => cat.n.toLowerCase().includes('close rate'))?.amt.toLocaleString()||'0'}. If this is $0, frame this section as a strength with ceiling upside — not a missed opportunity.`,
 
 
     DEAD:`${base}\nWrite ONLY the [DEAD] section. First line: [DEAD]\n\n<div class="quick-win">[One specific action THIS WEEK to re-engage cold leads in ${c.ind}]</div>\n\n<h4>Value in Your Pipeline</h4>\n<p>~${c.dead} unconverted leads × ${c.avgLo} average × 12% re-engagement rate = approximately $${c.deadVal.toLocaleString()} in recoverable revenue. 3 specific reasons leads go cold in ${c.ind}.</p>\n<h4>Re-Engagement Sequence</h4>\n<div class="script"><span class="slabel">Re-engagement Email (Subject: [specific to ${c.ind}])</span><p>[Complete 65-word email]</p></div>\n<div class="script"><span class="slabel">Follow-Up Text — 3 Days Later (under 140 chars)</span><p>[Complete text]</p></div>\n<div class="script"><span class="slabel">Final Email — Day 10 (Subject: Last one from us)</span><p>[Complete 45-word closing email]</p></div>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[ongoing]</li></ol></div>`,
  
-    MKTG:`${base}\nWrite ONLY the [MKTG] section. First line: [MKTG]\n\n<div class="quick-win">[One specific marketing action THIS WEEK for ${c.ind} — 30 minutes or less]</div>\n\n<h4>Marketing Diagnosis</h4>\n<p>Honest assessment based on their diagnostic. Specific to ${c.ind}.</p>\n<h4>The 2 Highest-ROI Channels for ${c.ind}</h4>\n<p>Name the 2 specific channels with data and source names. For each: why it works, how to implement, expected ROI.</p>\n<h4>30-Minute Weekly Content Framework</h4>\n<table><tr><th>Week</th><th>Content Type</th><th>Specific Topic for ${c.ind}</th><th>Platform</th></tr><tr><td>1</td><td>[type]</td><td>[specific real topic]</td><td>[platform]</td></tr><tr><td>2</td><td>[type]</td><td>[specific real topic]</td><td>[platform]</td></tr><tr><td>3</td><td>[type]</td><td>[specific real topic]</td><td>[platform]</td></tr><tr><td>4</td><td>[type]</td><td>[specific real topic]</td><td>[platform]</td></tr></table>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
+    SYSTEMS:`${base}\nWrite ONLY the [SYSTEMS] section. First line: [SYSTEMS]\n\n<div class="quick-win">[One specific automation action THIS WEEK for ${c.ind} — one repetitive manual task to automate in under an hour]</div>\n\n<h4>Systems & Automation Diagnosis</h4>\n<p>They report approximately ${c.adminH} hours/week of manual admin (quoting, invoicing, follow-up, scheduling). At a conservative $45/hour replacement cost, that is approximately $${Math.round(c.adminH*52*45).toLocaleString()}/year of owner or staff time on work software can do. Roughly 60% of it is automatable with today's tools, reclaiming an estimated ${Math.round(c.adminH*0.6)} hours/week. Honest assessment specific to ${c.ind}.</p>\n<h4>What to Automate First — Ranked by Hours Reclaimed</h4>\n<table><tr><th>Rank</th><th>Process</th><th>Est. Hours/Week Reclaimed</th><th>How (specific to ${c.ind})</th></tr><tr><td>1</td><td>[highest-hour manual process, e.g. lead follow-up]</td><td>[hours]</td><td>[specific automation approach]</td></tr><tr><td>2</td><td>[process]</td><td>[hours]</td><td>[approach]</td></tr><tr><td>3</td><td>[process]</td><td>[hours]</td><td>[approach]</td></tr><tr><td>4</td><td>[process]</td><td>[hours]</td><td>[approach]</td></tr></table>\n<h4>The Follow-Up Machine</h4>\n<p>The single highest-value automation for ${c.ind}: automatic speed-to-lead response and structured follow-up sequences. What it looks like when running, and the estimated revenue it protects given their ~${c.close} close rate and ~${c.mthLeads} leads/month. 3-4 sentences.</p>\n<h4>AI and Modern Automation for ${c.ind}</h4>\n<p>Where AI-driven automation realistically helps a ${c.ind} business at ${c.revRange}: quote drafting, review responses, appointment reminders, invoice chasing, job notes. What to adopt now vs skip. Practical, no hype. 3-4 sentences.</p>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
  
     RET:`${base}\nWrite ONLY the [RET] section. First line: [RET]\n\n<div class="quick-win">[One specific retention action THIS WEEK — call or email a specific type of past customer in ${c.ind}]</div>\n\n<h4>Customer Lifetime Value Estimate</h4>\n<p>${c.avgMid} avg × approximately 1.5 jobs/year × 4-year average retention = approximately $${clvEstimate} customer lifetime value. Bain & Company: 5% retention = 25–95% profit growth. Industry average retention: ${c.bench.retention}% (${c.bench.source}). Conservative language.</p>\n<h4>The Retention Gap</h4>\n<p>Estimated annual cost of their retention gap. Why ${c.ind} customers stop returning. 3–4 sentences.</p>\n<h4>3-Step Retention System for ${c.ind}</h4>\n<p>Specific touchpoints, timing, channels. Not generic.</p>\n<div class="script"><span class="slabel">30-Day Post-Job Check-In (Email — 70 words)</span><p>[Full email — warm, specific to ${c.ind}]</p></div>\n<div class="script"><span class="slabel">6-Month Re-Engagement (Text — under 140 chars)</span><p>[Complete text]</p></div>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
  
@@ -1378,15 +1407,17 @@ function buildSectionPrompt(key, c) {
  
     PRICE:`${base}\nWrite ONLY the [PRICE] section. First line: [PRICE]\n\n<div class="quick-win">[One specific pricing action THIS WEEK — test a price increase on new quotes starting today]</div>\n\n<h4>The Pricing Opportunity</h4>\n<p>McKinsey: 1% price improvement = ~11% profit improvement. Conservative 6% adjustment on ${c.revLo} = approximately $${priceUplift6} annually. At your revenue midpoint of ${c.revMid}, that same 6% move delivers approximately $${priceUplift6Mid}. How ${c.ind} businesses test increases without losing customers.</p>\n<h4>The Price Increase Test Methodology</h4>\n<p>How to safely test a 7–10% increase in ${c.ind}. What signals confirm it's working. 3–4 sentences.</p>\n<h4>Premium Tier Example for ${c.ind}</h4>\n<p>Specific Good / Better / Best structure — approximate prices, what each tier includes.</p>\n<div class="script"><span class="slabel">Price Increase Communication Script</span><p>[Complete 70-word script — confident, value-focused]</p></div>\n<div class="script"><span class="slabel">Premium Tier Presentation Script</span><p>[Complete 70-word script — presents 3 options naturally]</p></div>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
  
-    REV:`${base}\nWrite ONLY the [REV] section. First line: [REV]\n\n<div class="quick-win">[One specific review action THIS WEEK — send review request to a specific group of recent customers]</div>\n\n<h4>The Review-to-Revenue Connection for ${c.ind}</h4>\n<p>BrightLocal: 93% of consumers check reviews. Moz: reviews account for ~15% of local search ranking. Industry average for ${c.bench.label}: ${c.bench.reviewCount} reviews (${c.bench.source}). Direct link between review volume and inbound lead flow in ${c.ind}.</p>\n<h4>Systematic Review Request Process</h4>\n<p>Exact timing, channel, message for ${c.ind}. When to ask, how to make it easy.</p>\n<div class="script"><span class="slabel">Review Request Text — 24–48 Hours After Completion (under 140 chars)</span><p>[Complete text with [your Google review link]]</p></div>\n<div class="script"><span class="slabel">Follow-Up If No Review — 5 Days Later (under 140 chars)</span><p>[Complete follow-up — gentle]</p></div>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
+    REV:`${base}\nWrite ONLY the [REV] section. First line: [REV]\n\n<div class="quick-win">[One specific review action THIS WEEK — send review request to a specific group of recent customers]</div>\n\n<h4>Reviews Are a Follow-Up System, Not a Marketing Project</h4>\n<p>Reviews are the byproduct of a post-job follow-up process that runs every time. Buyers check them before they call, so a thin review profile quietly raises your cost of winning each job. Frame this as an operations gap: the businesses with strong review counts simply have a system that asks every customer, automatically. Industry average for ${c.bench.label}: ${c.bench.reviewCount} reviews (${c.bench.source}). 3-4 sentences, no SEO tactics.</p>\n<h4>Systematic Review Request Process</h4>\n<p>Exact timing, channel, message for ${c.ind}. When to ask, how to make it easy, and how to wire it into the job-completion workflow so nobody has to remember.</p>\n<div class="script"><span class="slabel">Review Request Text — 24–48 Hours After Completion (under 140 chars)</span><p>[Complete text with [your Google review link]]</p></div>\n<div class="script"><span class="slabel">Follow-Up If No Review — 5 Days Later (under 140 chars)</span><p>[Complete follow-up — gentle]</p></div>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
  
-    OPS:`${base}\nWrite ONLY the [OPS] section. First line: [OPS]\n\n<div class="quick-win">[One specific operations action THIS WEEK — document one process or implement one quality checkpoint in ${c.ind}]</div>\n\n<h4>The True Cost of Quality Issues in ${c.ind}</h4>\n<p>Each complaint costs 4–6× the original transaction value when you factor in rework, lost referrals, and reputation damage. At your average transaction of approximately ${c.avgMid}, each avoidable complaint costs approximately $${complaintCostLo}–$${complaintCostHi}. Annual impact at their complaint rate.</p>\n<h4>The 3 Critical SOPs for ${c.ind}</h4>\n<p>Name and describe the 3 most impactful SOPs specifically for ${c.ind}. For each: what it covers, key steps, what breaks without it.</p>\n<h4>Quality Control in Practice</h4>\n<p>How top-performing ${c.ind} businesses build quality checkpoints without significant overhead. 2–3 sentences with a specific example.</p>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li></ol></div>`,
+    OPS:`${base}\nWrite ONLY the [OPS] section. First line: [OPS]\n\n<div class="quick-win">[One specific operations action THIS WEEK — fix one scheduling gap or implement one quality checkpoint in ${c.ind}]</div>\n\n<h4>Scheduling Efficiency — Capacity You Already Paid For</h4>\n<p>Their scheduling is ${c.schedLabel}. Callbacks, windshield time, and gaps between jobs are capacity the business already pays for but never bills. Estimate the recoverable jobs per week from tighter routing and fewer callbacks for a ${c.ind} team of ~${c.teamSize}, and the annual dollar value at ~${c.avgLo} per job. 3-4 sentences, specific to ${c.ind}.</p>\n<h4>The True Cost of Quality Issues in ${c.ind}</h4>\n<p>Each complaint costs 4–6× the original transaction value when you factor in rework, lost referrals, and reputation damage. At your average transaction of approximately ${c.avgMid}, each avoidable complaint costs approximately $${complaintCostLo}–$${complaintCostHi}. Annual impact at their complaint rate.</p>\n<h4>The 3 Critical SOPs for ${c.ind}</h4>\n<p>Name and describe the 3 most impactful SOPs specifically for ${c.ind}. For each: what it covers, key steps, what breaks without it.</p>\n<h4>Quality Control in Practice</h4>\n<p>How top-performing ${c.ind} businesses build quality checkpoints without significant overhead. 2–3 sentences with a specific example.</p>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li></ol></div>`,
+
+    LEVERAGE:`${base}\nWrite ONLY the [LEVERAGE] section. First line: [LEVERAGE]\n\n<div class="quick-win">[One specific delegation action THIS WEEK — hand off or document one task the owner does out of habit, not necessity]</div>\n\n<h4>What Breaks When You Take a Week Off</h4>\n<p>Their diagnostic answer: ${c.ownerDepLabel}. Be direct about what that means: an owner-dependent ${c.ind} business has a hard revenue ceiling, burns out its most expensive employee on its cheapest work, and is worth far less to a buyer. Tie to their ~${c.adminH} hrs/week of manual admin. 3-4 sentences.</p>\n<h4>Eliminate / Automate / Delegate / Do</h4>\n<table><tr><th>Bucket</th><th>Typical ${c.ind} owner tasks</th><th>First move</th></tr><tr><td><strong>Eliminate</strong></td><td>[tasks that should not exist]</td><td>[specific action]</td></tr><tr><td><strong>Automate</strong></td><td>[repetitive admin — link to SYSTEMS section]</td><td>[specific action]</td></tr><tr><td><strong>Delegate</strong></td><td>[tasks a team member or VA can own]</td><td>[specific action]</td></tr><tr><td><strong>Do</strong></td><td>[the 3-4 things only the owner should do]</td><td>[specific action]</td></tr></table>\n<h4>The SOP Ladder — From Head to Paper to Team</h4>\n<p>The practical path for ${c.ind}: pick the most repeated process, record yourself doing it once, turn it into a one-page checklist, hand it to one person, review weekly for a month. Name the first 3 SOPs a ${c.ind} business should write, in order. 3-4 sentences.</p>\n<h4>The One-Week-Off Test</h4>\n<p>Define the 90-day target: the owner can take 5 working days off and revenue, scheduling, and customer communication continue. List the 4-5 specific things that must be true for a ${c.ind} business to pass, based on their answers. End with the exact first delegation to make this week.</p>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
  
     PRIORITY:`${base}\nWrite ONLY the [PRIORITY] section. First line: [PRIORITY]\n\n<h4>Priority Rankings for ${c.biz}</h4>\n<table><tr><th>Rank</th><th>Category</th><th>Est. Opportunity</th><th>Conservative 90-Day Target</th><th>First Action This Week</th></tr>\n${c.L.cats.map((cat,i)=>`<tr><td><strong>#${i+1}</strong></td><td>${cat.n}</td><td>~$${cat.amt.toLocaleString()}</td><td>$${Math.round(cat.amt*0.15).toLocaleString()}–$${Math.round(cat.amt*0.25).toLocaleString()}</td><td>[1 specific first step for ${c.ind}]</td></tr>`).join('\n')}\n</table>\n<p>Write 2 paragraphs explaining the sequencing strategy — why this order maximizes early results for ${c.biz} in ${c.ind}. Specific, conservative language.</p>`,
  
     PLAN:`${base}\nWrite ONLY the [PLAN] section. First line: [PLAN]\n\nEvery task SPECIFIC to ${c.ind} — not generic. Include real time estimates.\n\n<div class="pgrid">\n<div class="pcard"><div class="ptag">Week 1 — Days 1–7</div><div class="ptitle">Quick Wins</div>\n<div class="ptask">Day 1 (time): [specific ${c.ind} task]</div>\n<div class="ptask">Day 2 (time): [specific task]</div>\n<div class="ptask">Day 3 (time): [specific task]</div>\n<div class="ptask">Day 4 (time): [specific task]</div>\n<div class="ptask">Day 5 (time): [specific task]</div>\n<div class="ptask">Days 6–7 (time): [specific task]</div>\n<div class="pmile">Day 30 milestone: [3–4 specific measurable outcomes with numbers]</div>\n</div>\n<div class="pcard"><div class="ptag">Week 2 — Days 8–14</div><div class="ptitle">Foundation</div>\n<div class="ptask">(time): [specific task]</div>\n<div class="ptask">(time): [specific task]</div>\n<div class="ptask">(time): [specific task]</div>\n<div class="ptask">(time): [specific task]</div>\n<div class="ptask">(time): [specific task]</div>\n<div class="pmile">Day 60 milestone: [specific measurable outcomes]</div>\n</div>\n<div class="pcard"><div class="ptag">Month 2 — Days 31–60</div><div class="ptitle">Momentum</div>\n<div class="ptask">[specific task]</div><div class="ptask">[specific task]</div><div class="ptask">[specific task]</div><div class="ptask">[specific task]</div><div class="ptask">[specific task]</div>\n</div>\n<div class="pcard"><div class="ptag">Month 3 — Days 61–90</div><div class="ptitle">Systematize</div>\n<div class="ptask">[specific task]</div><div class="ptask">[specific task]</div><div class="ptask">[specific task]</div><div class="ptask">[specific task]</div><div class="ptask">[specific task]</div>\n<div class="pmile">Day 90 milestone: [specific metrics for ${c.ind}]</div>\n</div>\n</div>`,
  
-    ROI:`${base}\nWrite ONLY the [ROI] section. First line: [ROI]\n\n<h4>Conservative Recovery Projection</h4>\n<table>\n<tr><th>Scenario</th><th>Recovery Rate</th><th>Month 1 Est.</th><th>Month 2 Est.</th><th>Month 3 Est.</th><th>90-Day Total</th></tr>\n<tr><td>Conservative</td><td>15%</td><td>~$${Math.round(c.L.total*0.15*0.15).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.15*0.50).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.15).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.15).toLocaleString()}</td></tr>\n<tr><td>Realistic</td><td>22%</td><td>~$${Math.round(c.L.total*0.22*0.20).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.22*0.55).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.22).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.22).toLocaleString()}</td></tr>\n<tr><td>Optimistic</td><td>32%</td><td>~$${Math.round(c.L.total*0.32*0.25).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.32*0.60).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.32).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.32).toLocaleString()}</td></tr>\n</table>\n<p>Explain what drives each scenario. Be honest that results vary.</p>\n<h4>Report ROI</h4>\n<p>At realistic scenario: ~$${Math.round(c.L.total*0.22).toLocaleString()} in 90 days on a $497 investment = approximately ${Math.round(c.L.total*0.22/497)}x return. Converting just ${Math.ceil(497/c.L.meta.avgLo)} additional dormant leads covers the cost of this report.</p>\n<div class="disclaimer">All projections are estimates. Results depend on consistent implementation, your market, and your specific circumstances.</div>\n<h4>Your Single Most Important Action in the Next 48 Hours</h4>\n<p>[Single most impactful, specific first action for ${c.biz} in ${c.ind} based on their #1 opportunity. 80–100 words. Exact steps. Specific to ${c.ind}.]</p>`,
+    ROI:`${base}\nWrite ONLY the [ROI] section. First line: [ROI]\n\n<h4>Conservative Recovery Projection</h4>\n<table>\n<tr><th>Scenario</th><th>Recovery Rate</th><th>Month 1 Est.</th><th>Month 2 Est.</th><th>Month 3 Est.</th><th>90-Day Total</th></tr>\n<tr><td>Conservative</td><td>15%</td><td>~$${Math.round(c.L.total*0.15*0.15).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.15*0.50).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.15).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.15).toLocaleString()}</td></tr>\n<tr><td>Realistic</td><td>22%</td><td>~$${Math.round(c.L.total*0.22*0.20).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.22*0.55).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.22).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.22).toLocaleString()}</td></tr>\n<tr><td>Optimistic</td><td>32%</td><td>~$${Math.round(c.L.total*0.32*0.25).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.32*0.60).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.32).toLocaleString()}</td><td>~$${Math.round(c.L.total*0.32).toLocaleString()}</td></tr>\n</table>\n<p>Explain what drives each scenario. Be honest that results vary.</p>\n<h4>Your 30-Minute Walkthrough Call</h4>\n<p>Remind them the audit includes a 30-minute walkthrough call with the operator who built it. Tell them exactly what to bring: this report, their last 10 invoices, and their calendar. On the call: confirm the top leak, sanity-check the numbers against real books, and lock in the first three moves. 2-3 sentences, direct.</p>\n<div class="disclaimer">All projections are estimates. Results depend on consistent implementation, your market, and your specific circumstances.</div>\n<h4>Your Single Most Important Action in the Next 48 Hours</h4>\n<p>[Single most impactful, specific first action for ${c.biz} in ${c.ind} based on their #1 opportunity. 80–100 words. Exact steps. Specific to ${c.ind}.]</p>`,
     
     KPI:`${base}\nWrite ONLY the [KPI] section. First line: [KPI]\n\n
 Write specific, math-grounded KPI guidance for ${c.biz}, a ${c.ind} business at ${c.revRange} revenue.\n\n
@@ -1412,44 +1443,42 @@ Write specific, math-grounded KPI guidance for ${c.biz}, a ${c.ind} business at 
 <li><strong>On-time delivery rate:</strong> Target 95%+. Below 90% signals a capacity or scheduling problem that will affect reviews.</li>
 <li><strong>Complaint rate:</strong> Target under 2%. At ${c.avgLo} avg job value, each complaint costs 4–6× the job value in lost future revenue.</li>
 <li><strong>Revenue per team member:</strong> Total revenue ÷ headcount. Rising = efficiency. Flat = you need a process. Falling = you have a performance or pricing problem.</li>
-<li><strong>Capacity utilization:</strong> Billable hours ÷ available hours. Under 70% = marketing problem. Over 90% = hiring problem. The zone is 75–85%.</li>
+<li><strong>Capacity utilization:</strong> Billable hours ÷ available hours. Under 70% points at scheduling gaps, close rate, or sales process — leads are dying between enquiry and booked job. Over 90% = hiring problem. The zone is 75–85%.</li>
 </ol></div>
 <h4>Your KPI Tracking System</h4>
 <p>Specific recommendation for how a ${c.ind} business at ${c.revRange} should track these — what tool (spreadsheet, CRM, job management software), who owns each metric, and what the Monday morning review should look like. 3–4 sentences, practical, specific to ${c.ind}.</p>
 <div class="stat-call">The businesses that close their revenue gaps fastest all share one habit: they look at their numbers before they look at anything else on Monday morning. Build the dashboard first. The discipline follows.</div>`,
 
-LOCAL:`${base}\nWrite ONLY the [LOCAL] section. First line: [LOCAL]\n\n
-Write hyper-specific local market guidance for ${c.biz} — a ${c.ind} business based in ${c.city}.\n\n
-<div class="quick-win">[One specific local action THIS WEEK — a partnership, community group, or local platform specific to ${c.ind} businesses in ${c.city}]</div>
-<h4>The ${c.city} Market Opportunity for ${c.ind}</h4>
-<p>Open with a sharp assessment of what the ${c.city} market looks like for ${c.ind} businesses — growth trends, population and demographic factors that drive demand, and why local dominance is winnable in this type of market. Reference real characteristics of markets like ${c.city} (size, economy type, growth trajectory). 3–4 sentences.</p>
-<h4>Local SEO Domination</h4>
-<p>Specific Google Business Profile and local SEO strategy for ${c.ind} in ${c.city}. Include the exact search terms people in ${c.city} use (e.g. "[service] near me", "[service] ${c.city}", "[neighbourhood] [service]"). What a fully optimized GBP looks like for ${c.ind}. How to rank above competitors in the map pack. 3–4 sentences with specific actions.</p>
-<div class="action-box"><h5>Local SEO actions — this month</h5><ol>
-<li>[GBP optimization step specific to ${c.ind} — time: 45 min]</li>
-<li>[Local citation / directory submission specific to ${c.ind} — time: 30 min]</li>
-<li>[Review acquisition tied to local ranking — time: ongoing]</li>
-<li>[Local content page to create — specific topic for ${c.city} ${c.ind}]</li>
+CASH:`${base}\nWrite ONLY the [CASH] section. First line: [CASH]\n\n
+Write specific cash flow and job costing guidance for ${c.biz} — a ${c.ind} business at ${c.revRange} revenue.\n\n
+<div class="quick-win">[One specific cash action THIS WEEK — chase one aged invoice or calculate margin on the last completed job. Under 45 minutes.]</div>
+<h4>Collection Speed — The Silent Leak</h4>
+<p>Their typical collection is ${c.payLabel}. Every day between job completion and payment is unpaid financing they provide to customers. Walk the math: at ${c.revMid} annual revenue, 30 days of receivables is roughly $${Math.round(parseInt(c.revMid.replace(/[$,]/g,''))/12).toLocaleString()} of their own cash locked up, plus write-off risk that grows with invoice age. Industry norm for well-run ${c.ind} businesses: payment on completion or within 14 days. 3-4 sentences, specific.</p>
+<div class="action-box"><h5>Collections system — set up this month</h5><ol>
+<li>[Payment terms change — what to put on every quote and invoice for ${c.ind}. Time: 30 min]</li>
+<li>[Deposit or progress payment structure appropriate to ${c.ind} job sizes. Time: 45 min]</li>
+<li>[Automated invoice reminder sequence — day 0, day 7, day 14. Tool and message. Time: 1 hr]</li>
+<li>[Card/ACH payment on site or on link — specific option for ${c.ind}. Time: 1 hr]</li>
 </ol></div>
-<h4>Local Partnership Opportunities in ${c.city}</h4>
-<p>Name 5–6 specific types of complementary businesses in ${c.city} that share your customer base but don't compete with ${c.ind}. For each: the exact referral opportunity, how to approach them, and what a simple reciprocal referral arrangement looks like. Be specific to the ${c.city} business ecosystem — think real estate agents, property managers, builders, insurance brokers, community groups, or whatever is specifically relevant to ${c.ind}.</p>
-<h4>Community Presence — Getting Known in ${c.city}</h4>
-<p>Specific local events, sponsorships, trade shows, expos, and community involvement opportunities relevant to ${c.ind} in a market like ${c.city}. Name local organization types (chambers of commerce, BNI, Rotary, local business Facebook groups, Nextdoor, neighborhood associations). What to do in each, what it costs, and what the ROI typically looks like for ${c.ind} businesses. 4–5 sentences.</p>
-<h4>Hyperlocal Neighbourhood Strategy</h4>
-<p>How to dominate one neighbourhood at a time in ${c.city} before expanding. The "plant a flag" strategy — vehicle signage, neighbourhood flyers, street-level presence, local social groups. Why this works better than broad marketing for ${c.ind} at ${c.revRange} revenue. Include one specific tactic that works in suburban markets and one that works in urban markets — cover both.</p>
-<div class="script"><span class="slabel">Introduction script — meeting a potential local referral partner</span><p>[Complete 70-word script for ${c.ind} owner meeting a complementary business in ${c.city} for the first time — warm, confident, clear value exchange]</p></div>`,
+<h4>Margin Per Job Type — Do You Actually Know It?</h4>
+<p>Their job costing maturity: ${c.jobCostingLabel}. Explain what flying blind on margin costs a ${c.ind} business: quoting unprofitable work, growing revenue while shrinking profit, discounting jobs that were already thin. Show the simple job-cost formula for ${c.ind} (labor + materials + drive time + overhead allocation vs price). 3-4 sentences.</p>
+<h4>The Job Costing Baseline — 2 Hours, One Spreadsheet</h4>
+<p>Walk them through costing their last 10 completed jobs: what columns to track, how to allocate overhead simply, and what pattern usually shows up in ${c.ind} (one service line quietly subsidizing another). End with the decision rule: reprice, fix, or stop selling the losers.</p>
+<h4>Pricing Discipline Follows Costing</h4>
+<p>Once margin per job type is known, pricing stops being guesswork. Connect this to their pricing answers: which job types can carry an increase first, and how knowing the numbers removes the fear of raising prices. 2-3 sentences.</p>
+<div class="script"><span class="slabel">Overdue invoice call script — day 14, friendly but firm</span><p>[Complete 60-word phone script for a ${c.ind} owner chasing an overdue invoice — warm, direct, asks for payment today or a date]</p></div>`,
 
 COMPETE:`${base}\nWrite ONLY the [COMPETE] section. First line: [COMPETE]\n\n
-Write specific competitive analysis guidance for ${c.biz} — a ${c.ind} business in ${c.city}.\n\n
-<div class="quick-win">[One competitive intelligence action THIS WEEK — one specific thing to check about your top competitor today, in under 30 minutes]</div>
-<h4>Mapping the ${c.ind} Competitive Landscape in ${c.city}</h4>
-<p>How to identify and categorize the top 5–8 competitors in ${c.city} for ${c.ind}. Where to look (Google Maps search, Yelp, local directories, trade associations). How to segment them: price leaders vs premium operators vs niche specialists. What tier ${c.biz} competes in now vs where the opportunity is. 3–4 sentences, specific.</p>
+Write a plain competitive benchmark comparison for ${c.biz} — a ${c.ind} business in ${c.city}. This is an operational comparison: numbers vs numbers. Do NOT prescribe SEO, online-presence, or marketing tactics.\n\n
+<div class="quick-win">[One competitive intelligence action THIS WEEK — one specific operational thing to check about your top competitor today, in under 30 minutes]</div>
+<h4>Where ${c.biz} Sits vs the Typical ${c.ind} Competitor</h4>
+<p>Compare their diagnostic numbers to the typical ${c.ind} operator: close rate ~${c.close} vs ${c.bench.closeRate}% benchmark, retention vs ${c.bench.retention}%, response speed, and payment collection (${c.payLabel}). Segment the field: price leaders vs premium operators vs niche specialists, and state which tier ${c.biz} competes in now vs where the numbers say the opportunity is. 3–4 sentences, specific.</p>
 <h4>The 6-Point Competitor Audit</h4>
 <div class="action-box"><h5>Run this on your top 3 competitors — takes 2 hours total</h5><ol>
 <li><strong>Review audit:</strong> Read every review — 1-star and 5-star. The 1-stars tell you what customers hate. The 5-stars tell you what they value. Both are roadmaps for you. Note the specific patterns for ${c.ind} in ${c.city}.</li>
 <li><strong>Pricing audit:</strong> Request quotes as a mystery shopper. Know exactly where competitors price relative to you. Calculate the gap. Understand whether they're winning on price or losing on value.</li>
 <li><strong>Response speed audit:</strong> Call or submit an enquiry form. Time their response. In ${c.ind}, response speed is one of the highest-leverage conversion variables. If they're slow, that's your opening.</li>
-<li><strong>Online presence audit:</strong> GBP completeness, review count, website quality, social activity. Identify the channels they've abandoned — those are your opportunity channels.</li>
+<li><strong>Operations audit:</strong> How fast they can schedule the work, how professional the quote is, whether they take payment on site. Slow scheduling and sloppy quoting are the operational gaps you can beat them on.</li>
 <li><strong>Service offer audit:</strong> What do they offer that you don't? What do you offer that they don't? What are customers asking for that nobody provides? That last question is where new revenue hides.</li>
 <li><strong>Reputation trajectory audit:</strong> Are their reviews trending up or down over the last 6 months? A declining reputation is your fastest growth opportunity — their unhappy customers are looking for someone better.</li>
 </ol></div>
@@ -1476,10 +1505,10 @@ Write a specific technology and software stack recommendation for ${c.biz} — a
 <li>How job management software directly increases revenue in ${c.ind}: fewer dropped balls, faster invoicing, better capacity visibility.</li>
 <li>The integration between CRM and job management that most ${c.ind} businesses skip — and what it costs them.</li>
 </ol></div>
-<div class="action-box"><h5>Marketing & communication tools</h5><ol>
+<div class="action-box"><h5>Customer communication & follow-up tools</h5><ol>
 <li><strong>Review automation:</strong> Name the best review request tool for ${c.ind}. How to set it up. Expected review velocity once running.</li>
 <li><strong>Email/SMS automation:</strong> Best tool for ${c.ind} follow-up sequences. Name it, cost, and the one automation to set up first.</li>
-<li><strong>Social & content:</strong> Which platforms matter most for ${c.ind} in ${c.city} and what tools simplify content creation. Be specific.</li>
+<li><strong>Appointment reminders:</strong> On-my-way texts and confirmation reminders — which tools handle this for ${c.ind} and the no-show reduction to expect. Be specific.</li>
 <li><strong>Booking & scheduling:</strong> Online booking software recommendation for ${c.ind} — if relevant to their model. Name specific tools.</li>
 </ol></div>
 <div class="action-box"><h5>Finance & operations</h5><ol>
@@ -1591,7 +1620,7 @@ Write a comprehensive implementation checklist for ${c.biz} — a ${c.ind} busin
 <li>[${c.ind}-specific action — reviews — 20 min — specific outcome expected]</li>
 <li>[${c.ind}-specific action — referrals — 30 min — specific outcome expected]</li>
 <li>[${c.ind}-specific action — KPI dashboard setup — 60 min — specific outcome]</li>
-<li>[${c.ind}-specific action — local presence — 45 min — specific outcome]</li>
+<li>[${c.ind}-specific action — chase aged invoices / set payment terms — 45 min — specific outcome]</li>
 </ol></div>
 <div class="action-box"><h5>Week 2 — Systems (building what runs automatically)</h5><ol>
 <li>[Follow-up sequence setup — specific to ${c.ind} — time estimate]</li>
@@ -1603,15 +1632,15 @@ Write a comprehensive implementation checklist for ${c.biz} — a ${c.ind} busin
 </ol></div>
 <div class="action-box"><h5>Month 1 — Foundation (everything that compounds over 90 days)</h5><ol>
 <li>[SOP documentation — first process to write for ${c.ind}]</li>
-<li>[Google Business Profile full optimization — specific to ${c.ind}]</li>
-<li>[Local partnership — first outreach, specific target type]</li>
+<li>[Job costing baseline — margin on last 10 jobs, specific to ${c.ind}]</li>
+<li>[Automation #1 — automate the most repetitive admin task]</li>
 <li>[Customer reactivation campaign — specific approach for ${c.ind}]</li>
 <li>[KPI review cadence — first Monday morning dashboard review]</li>
 <li>[Pricing tier creation — Good/Better/Best for ${c.ind}]</li>
 <li>[Tech stack decision — which tool to implement first]</li>
 </ol></div>
 <div class="action-box"><h5>Month 2 — Momentum (systems running, now optimize)</h5><ol>
-<li>[Content creation — first piece of local ${c.city} content]</li>
+<li>[Collections upgrade — automated invoice reminders and payment terms on every quote]</li>
 <li>[Team process — first thing to delegate or document for future hire]</li>
 <li>[Retention system — 30/60/90 day customer touchpoint structure]</li>
 <li>[Dead lead re-engagement — second wave]</li>
@@ -1641,7 +1670,7 @@ Write a detailed, week-by-week 90-day roadmap specific to ${c.biz} — a ${c.ind
 <div class="ptask">Day 3 (45 min): [Review request to last 10 completed customers — specific script]</div>
 <div class="ptask">Day 4 (60 min): [Follow-up sequence — write and schedule emails 1–3, specific to ${c.ind}]</div>
 <div class="ptask">Day 5 (30 min): [Referral ask — first systematic ask, specific script from REF section]</div>
-<div class="ptask">Days 6–7: [GBP optimization — specific to ${c.ind} in ${c.city}]</div>
+<div class="ptask">Days 6–7: [Automate one manual admin task — quoting, invoicing, or follow-up — specific to ${c.ind}]</div>
 <div class="pmile">Day 7 milestone: First follow-up sequence running. KPI dashboard live. 10+ review requests sent. First referral ask made. Measure: leads in pipeline, quotes outstanding.</div>
 </div>
 <div class="pcard"><div class="ptag">Week 2 — Days 8–14</div><div class="ptitle">Systems & Foundation</div>
@@ -1649,17 +1678,17 @@ Write a detailed, week-by-week 90-day roadmap specific to ${c.biz} — a ${c.ind
 <div class="ptask">Day 9 (90 min): [Pricing review — test new rate on next 3 quotes, specific to ${c.ind}]</div>
 <div class="ptask">Day 10 (60 min): [Competitor audit — 3 competitors, specific output]</div>
 <div class="ptask">Day 11 (45 min): [First SOP — document most repeated ${c.ind} process]</div>
-<div class="ptask">Day 12 (30 min): [Local partnership outreach — 3 emails to complementary businesses in ${c.city}]</div>
+<div class="ptask">Day 12 (30 min): [Job costing baseline — margin on last 10 completed jobs]</div>
 <div class="ptask">Days 13–14: [Review all week 1 KPIs — what moved, what didn't, adjust]</div>
-<div class="pmile">Day 14 milestone: CRM active with all current leads loaded. Pricing test underway. First SOP written. Local outreach sent. 3+ new reviews received.</div>
+<div class="pmile">Day 14 milestone: CRM active with all current leads loaded. Pricing test underway. First SOP written. Job costing baseline done. 3+ new reviews received.</div>
 </div>
 <div class="pcard"><div class="ptag">Month 1 — Days 15–30</div><div class="ptitle">Momentum</div>
 <div class="ptask">(2 hrs): [Customer reactivation campaign — email all customers from last 12 months, ${c.ind}-specific message]</div>
 <div class="ptask">(90 min): [Premium tier design — Good/Better/Best pricing for ${c.ind}]</div>
 <div class="ptask">(60 min): [Review response system — respond to all existing reviews, set up alerts]</div>
-<div class="ptask">(2 hrs): [Local content — first piece targeting "${c.ind} in ${c.city}" keyword]</div>
+<div class="ptask">(2 hrs): [Collections cleanup — chase all outstanding invoices, set payment terms on every new quote]</div>
 <div class="ptask">(ongoing): [Weekly KPI review — every Monday, 30 minutes, non-negotiable]</div>
-<div class="pmile">Day 30 milestone: $${Math.round(parseInt(c.revMid.replace(/[$,]/g,''))/12*1.08).toLocaleString()} monthly revenue target (8% above baseline). 5+ new reviews. 2+ local partnerships active. Premium tier launched. Referral system running.</div>
+<div class="pmile">Day 30 milestone: $${Math.round(parseInt(c.revMid.replace(/[$,]/g,''))/12*1.08).toLocaleString()} monthly revenue target (8% above baseline). 5+ new reviews. Invoice reminders automated. Premium tier launched. Referral system running.</div>
 </div>
 <div class="pcard"><div class="ptag">Month 2 — Days 31–60</div><div class="ptitle">Optimization</div>
 <div class="ptask">[Analyze which lead sources are converting best — double down]</div>
@@ -1667,7 +1696,7 @@ Write a detailed, week-by-week 90-day roadmap specific to ${c.biz} — a ${c.ind
 <div class="ptask">[Tech tool #2 implementation — based on TECH section recommendation]</div>
 <div class="ptask">[Staff/capacity review — are you hitting 80%+ utilization? Time to plan first hire]</div>
 <div class="ptask">[Dead lead batch #2 — second wave re-engagement]</div>
-<div class="ptask">[Local community touchpoint — attend or sponsor one ${c.city} event or group]</div>
+<div class="ptask">[Owner leverage review — delegate or automate one recurring weekly task]</div>
 <div class="pmile">Day 60 milestone: $${Math.round(parseInt(c.revMid.replace(/[$,]/g,''))/12*1.15).toLocaleString()} monthly revenue target (15% above baseline). Review count up by 10+. Referral rate measurably improving. Hiring decision made.</div>
 </div>
 <div class="pcard"><div class="ptag">Month 3 — Days 61–90</div><div class="ptitle">Scale Preparation</div>
