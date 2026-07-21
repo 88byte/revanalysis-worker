@@ -361,19 +361,19 @@ async function uploadPDFToSupabase(pdfBase64, filename) {
 // ══════════════════════════════════════════════════
 async function generateAndSend({ email, firstName, lastName, title, bizName, industry, city, calcData, answers, consentBenchmark }) {
 
-  const SECTION_KEYS = ['EXEC','KPI','BENCH','CASH','COMPETE','CONV','DEAD','SYSTEMS','RET','REF','PRICE','REV','OPS','LEVERAGE','TECH','ASSETS','SCALE','HIRE','ACQUIRE','CHECKLIST','PRIORITY','ROADMAP','ROI'];
+  const SECTION_KEYS = ['EXEC','QUICKWIN','KPI','BENCH','CASH','COMPETE','CONV','DEAD','SYSTEMS','RET','REF','PRICE','REV','OPS','LEVERAGE','TECH','ASSETS','SCALE','HIRE','ACQUIRE','CHECKLIST','PRIORITY','ROADMAP','ROI'];
 
   // Batches of 3 — safe for Tier 1 output TPM limits
   // Sequence matters: narrative sections first, dependent sections last
   const BATCHES = [
-    ['EXEC', 'KPI', 'BENCH'],
-    ['CASH', 'COMPETE', 'CONV'],
-    ['DEAD', 'SYSTEMS', 'RET'],
-    ['REF', 'PRICE', 'REV'],
-    ['OPS', 'LEVERAGE', 'TECH'],
-    ['ASSETS', 'SCALE', 'HIRE'],
-    ['ACQUIRE', 'CHECKLIST', 'PRIORITY'],
-    ['ROADMAP', 'ROI']
+    ['EXEC', 'QUICKWIN', 'KPI'],
+    ['BENCH', 'CASH', 'COMPETE'],
+    ['CONV', 'DEAD', 'SYSTEMS'],
+    ['RET', 'REF', 'PRICE'],
+    ['REV', 'OPS', 'LEVERAGE'],
+    ['TECH', 'ASSETS', 'SCALE'],
+    ['HIRE', 'ACQUIRE', 'CHECKLIST'],
+    ['PRIORITY', 'ROADMAP', 'ROI']
   ];
 
   const sections = {};
@@ -542,9 +542,10 @@ function buildEmailHtml(firstName, bizName, industry, calcData, sections) {
   const rec22 = Math.round(L.total * 0.22);
   const bench = getIndustryBenchmarks(industry);
  
-  const sectionKeys = ['EXEC','KPI','BENCH','CASH','COMPETE','CONV','DEAD','SYSTEMS','RET','REF','PRICE','REV','OPS','LEVERAGE','TECH','ASSETS','SCALE','HIRE','ACQUIRE','CHECKLIST','PRIORITY','ROADMAP','ROI'];
+  const sectionKeys = ['EXEC','QUICKWIN','KPI','BENCH','CASH','COMPETE','CONV','DEAD','SYSTEMS','RET','REF','PRICE','REV','OPS','LEVERAGE','TECH','ASSETS','SCALE','HIRE','ACQUIRE','CHECKLIST','PRIORITY','ROADMAP','ROI'];
   const sectionTitles = {
     EXEC:'Executive Summary',
+    QUICKWIN:'The One Thing To Do This Week',
     KPI:'KPI Dashboard & Your Metrics',
     BENCH:'Industry Benchmark Analysis',
     CASH:'Cash Flow & Job Costing',
@@ -1330,6 +1331,8 @@ function buildServerContext(bizName, industry, calcData, answers, firstName, las
     schedLabel: ['chaotic with frequent callbacks','loose with weekly lost time','decent with occasional gaps','tight and optimized'][Math.min(a.schedEff??1,3)],
     ownerDepLabel: ['everything stalls without the owner','major issues and firefighting','minor hiccups. team covers most of it','runs fine without the owner'][Math.min(a.ownerDep??1,3)],
     total:`~$${L.total.toLocaleString()}`, totalRange:`$${L.totalLo.toLocaleString()}–$${L.totalHi.toLocaleString()}`,
+    // Quiz answers the owner marked "I'm not sure" (conservative defaults were applied)
+    estKeys: (Array.isArray(a.estimatedKeys) && a.estimatedKeys.length) ? a.estimatedKeys.join(', ') : '',
     top3, goal, bench,
     cats:L.cats.map(c=>`${c.n}: ~$${c.amt.toLocaleString()} (${c.desc})`).join('\n'),
     scores:Object.entries(L.sc).map(([k,v])=>`${k}: ${v}/100`).join(', '),
@@ -1350,7 +1353,7 @@ CLIENT DATA:
 - Top 3: ${c.top3} | Scores: ${c.scores} | Goal: ${c.goal}
 - Team size: ~${c.teamSize} people
 - Manual admin: ~${c.adminH} hrs/week | Payment collection: ${c.payLabel} | Job costing: ${c.jobCostingLabel}
-- Scheduling: ${c.schedLabel} | Owner dependence: ${c.ownerDepLabel}
+- Scheduling: ${c.schedLabel} | Owner dependence: ${c.ownerDepLabel}${c.estKeys ? `\n- NOTE: For these inputs the owner answered "not sure" and conservative defaults were applied. Hedge any figure built on them with "estimated"/"roughly": ${c.estKeys}` : ''}
  
 INDUSTRY BENCHMARKS (${c.bench.label} — ${c.bench.source}):
 - Close rate: ${c.bench.closeRate}% | Retention: ${c.bench.retention}% | Referrals: ${c.bench.referralPct}% | Reviews: ${c.bench.reviewCount}
@@ -1389,9 +1392,17 @@ function buildSectionPrompt(key, c) {
   const complaintCostHi = Math.round(avgMidNum * 6).toLocaleString();
   // Pre-calculate:
   const clvEstimate = Math.round(avgMidNum * 1.5 * 4).toLocaleString();
+  // QUICKWIN math: 10 most recent dead quotes (or fewer if they reported fewer),
+  // conservative 5-10% reactivation, valued at the conservative (low) avg job value
+  const qwAvgNum = c.L.meta.avgLo || 0;
+  const qwContacts = Math.min(10, c.dead || 10);
+  const qwLo = Math.round(qwContacts * 0.05 * qwAvgNum).toLocaleString();
+  const qwHi = Math.round(qwContacts * 0.10 * qwAvgNum).toLocaleString();
   const prompts = {
     EXEC:`${base}\nWrite ONLY the [EXEC] section. First line: [EXEC]\n\n5 focused paragraphs (~280 words):\n- Para 1: Open with ~${c.total} opportunity (range: ${c.totalRange}). Conservative language. Compelling ${c.ind}-specific analogy.\n- Para 2: Why ${c.ind} businesses specifically lose revenue this way — structural reasons.\n- Para 3: Top 3 opportunities: ${c.top3}. Dollar context and interconnection.\n- Para 4: What the next 90 days looks like. Realistic. Quote "businesses in ${c.ind} typically recover 15–25% in 90 days."\n- Para 5: Mindset shift from reactive to systematic. What top ${c.ind} businesses do differently.\n<div class="stat-call">One real industry statistic with source name relevant to ${c.ind}.</div>\n<div class="disclaimer">All figures are estimates based on the ranges you provided. Actual results depend on your situation and implementation consistency.</div>`,
- 
+
+    QUICKWIN:`${base}\nWrite ONLY the [QUICKWIN] section. First line: [QUICKWIN]\n\nThis section appears right after the executive summary and is the FIRST thing the reader acts on. One play only: reactivating their dead and dormant quotes. They reported approximately ${c.dead} unanswered or dormant quotes sitting in their pipeline. The play must be doable TODAY, cost $0, and require no marketing, no ads, and no new software. Just their phone and their quote list.\n\n<h4>The Play: Reactivate Your ${qwContacts} Most Recent Dead Quotes</h4>\n<p>2-3 sentences: pull the ${qwContacts} most recent unconverted quotes and work ONLY those today. Why recency matters for reactivation in ${c.ind}.</p>\n<h4>The Exact Sequence: 2 Texts + 1 Call</h4>\nWrite each message COMPLETE and word-for-word, specific to ${c.ind}. The ONLY allowed placeholder is the customer's first name written as [Name].\n<div class="script"><span class="slabel">Text 1 - Send This Morning (under 160 characters)</span><p>[Complete text message]</p></div>\n<div class="script"><span class="slabel">Text 2 - Send 4 Hours Later If No Reply (under 160 characters)</span><p>[Complete text message, different angle, ends with an easy yes/no question]</p></div>\n<div class="script"><span class="slabel">Call - End of Day for Anyone Who Has Not Replied (30-second voicemail script)</span><p>[Complete word-for-word voicemail script]</p></div>\n<h4>What This Is Worth</h4>\n<p>Walk the math conservatively: ${qwContacts} contacts x 5-10% reactivation x ~${c.avgLo} average job value = approximately $${qwLo} to $${qwHi} in recovered revenue from a single afternoon. Use "estimated" language. One sentence on why 5-10% is deliberately conservative against the 10-20% reactivation rates re-engagement campaigns typically see.</p>\n<div class="action-box"><h5>Do It Today: 4 Steps, Under 1 Hour of Work</h5><ol><li>[pull the ${qwContacts} most recent unconverted quotes, with time estimate]</li><li>[send Text 1 to all of them, time estimate]</li><li>[send Text 2 at the 4-hour mark to non-responders, time estimate]</li><li>[end-of-day calls to the rest, time estimate]</li></ol></div>\n<div class="disclaimer">Recovery figures are estimates based on a conservative 5-10% reactivation rate applied to your reported quote volume and average job value. Individual results vary.</div>`,
+
     BENCH:`${base}\nWrite ONLY the [BENCH] section. First line: [BENCH]\n\n<h4>How ${c.biz} Compares to ${c.bench.label}</h4>\nWrite 4 specific paragraphs — one per metric:\n1. Close rate: industry average ${c.bench.closeRate}% vs their ~${c.close}. Dollar impact of gap.\n2. Retention: industry average ${c.bench.retention}% vs their diagnostic answer. Dollar impact.\n3. Referrals: industry average ${c.bench.referralPct}% vs their answer. Dollar impact.\n4. Payment collection: their typical collection is ${c.payLabel}. The operational standard is payment within 14 days. Cash flow and write-off impact.\nFor each: state the gap, calculate the cost, give ONE action to close it in ${c.ind}.\nSource metrics 1-3 to: ${c.bench.source}\n<div class="stat-call">Businesses that close benchmark gaps in ${c.ind} typically do one thing differently: they systematize what top performers do instinctively.</div>`,
  
     CONV:`${base}\nWrite ONLY the [CONV] section. First line: [CONV]\n\n<div class="quick-win">[One specific action THIS WEEK to improve lead conversion in ${c.ind}]</div>\n\n<h4>Close Rate Analysis</h4>\n<p>~${c.close} vs ~${c.bench.closeRate}% ${c.ind} benchmark (${c.bench.source}). Calculate gap and dollar impact. Reference CSO Insights.</p>\n<h4>Response Speed Gap</h4>\n<p>MIT/HBR 5-minute rule applied to ${c.ind}. Conservative impact. 3–4 sentences.</p>\n<h4>Follow-Up System Gap</h4>\n<p>Salesforce 80%/5-touch. Specific to ${c.ind}. 3–4 sentences.</p>\n<h4>5-Email Follow-Up Sequence</h4>\nCRITICAL: Write each email COMPLETE — no placeholders. 60–70 words each.\n<div class="script"><span class="slabel">Email 1 — Same Day (Subject: [specific subject for ${c.ind}])</span><p>[Complete 65-word email]</p></div>\n<div class="script"><span class="slabel">Email 2 — Day 2 (Subject: [specific subject])</span><p>[Complete 60-word email]</p></div>\n<div class="script"><span class="slabel">Email 3 — Day 5 (Subject: [specific subject])</span><p>[Complete 60-word email — addresses most common ${c.ind} objection]</p></div>\n<div class="script"><span class="slabel">Email 4 — Day 10 (Subject: [specific subject])</span><p>[Complete 55-word email — mild urgency]</p></div>\n<div class="script"><span class="slabel">Email 5 — Day 21 (Subject: Closing the loop)</span><p>[Complete 45-word breakup email]</p></div>\n\nNOTE: The estimated current gap vs industry benchmark is ~$${c.L.cats.find(cat => cat.n.toLowerCase().includes('close rate'))?.amt.toLocaleString()||'0'}. If this is $0, frame this section as a strength with ceiling upside — not a missed opportunity.`,
