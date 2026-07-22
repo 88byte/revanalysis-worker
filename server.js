@@ -545,7 +545,7 @@ function buildEmailHtml(firstName, bizName, industry, calcData, sections) {
   const sectionKeys = ['EXEC','QUICKWIN','KPI','BENCH','CASH','COMPETE','CONV','DEAD','SYSTEMS','RET','REF','PRICE','REV','OPS','LEVERAGE','TECH','ASSETS','SCALE','HIRE','ACQUIRE','CHECKLIST','PRIORITY','ROADMAP','ROI'];
   const sectionTitles = {
     EXEC:'Executive Summary',
-    QUICKWIN:'The One Thing To Do This Week',
+    QUICKWIN:'Do This Week',
     KPI:'KPI Dashboard & Your Metrics',
     BENCH:'Industry Benchmark Analysis',
     CASH:'Cash Flow & Job Costing',
