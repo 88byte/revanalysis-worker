@@ -212,7 +212,7 @@ app.post('/generate', (req, res) => {
 function getIndustryBenchmarks(industry) {
   const ind = (industry || '').toLowerCase();
   if (ind.includes('plumb')||ind.includes('hvac')||ind.includes('electr')||ind.includes('roof')||ind.includes('contractor')||ind.includes('landscap')||ind.includes('pest')||ind.includes('paint'))
-    return { closeRate:58, retention:28, referralPct:20, reviewCount:42, label:'Home service contractors', source:'IBISWorld + BrightLocal' };
+    return { closeRate:58, retention:28, referralPct:20, reviewCount:42, label:'Service businesses', source:'IBISWorld + BrightLocal' };
   if (ind.includes('retail')||ind.includes('boutique')||ind.includes('shop')||ind.includes('store')||ind.includes('apparel'))
     return { closeRate:72, retention:25, referralPct:14, reviewCount:85, label:'Retail businesses', source:'NRF + Google' };
   if (ind.includes('gym')||ind.includes('fitness')||ind.includes('yoga')||ind.includes('crossfit')||ind.includes('wellness')||ind.includes('studio'))
@@ -1311,7 +1311,7 @@ function buildServerContext(bizName, industry, calcData, answers, firstName, las
     adminH: L.meta.adminH !== undefined ? L.meta.adminH : (a.adminHours !== undefined ? [3,7,15,25][Math.min(a.adminHours,3)] : 8),
     payLabel: ['same day or upfront','within 2 weeks','2-6 weeks','60+ days'][Math.min(a.paymentDays??1,3)],
     jobCostingLabel: ['unknown. bank balance only','rough gut feel','known for main services','tracked per job type'][Math.min(a.jobCosting??1,3)],
-    schedLabel: ['chaotic with frequent callbacks','loose with weekly lost time','decent with occasional gaps','tight and optimized'][Math.min(a.schedEff??1,3)],
+    schedLabel: ['chaotic with frequent rework or callbacks','loose with weekly lost time','decent with occasional gaps','tight and optimized'][Math.min(a.schedEff??1,3)],
     ownerDepLabel: ['everything stalls without the owner','major issues and firefighting','minor hiccups. team covers most of it','runs fine without the owner'][Math.min(a.ownerDep??1,3)],
     total:`~$${L.total.toLocaleString()}`, totalRange:`$${L.totalLo.toLocaleString()}–$${L.totalHi.toLocaleString()}`,
     totalMo:`~$${moRound(L.total).toLocaleString()}/month`,
@@ -1422,7 +1422,7 @@ Write specific, math-grounded KPI guidance for ${c.biz}, a ${c.ind} business at 
 <div class="action-box"><h5>Weekly revenue dashboard — review every Monday</h5><ol>
 <li><strong>Weekly revenue booked:</strong> Target $${Math.round(parseInt(c.revMid.replace(/[$,]/g,''))/52).toLocaleString()}/week (${c.revMid} ÷ 52). If below target 2 weeks running, it is a pipeline problem — act immediately.</li>
 <li><strong>Leads received:</strong> Target ${c.mthLeads}+/month. Track source (referral, Google, social, repeat). Source data tells you where to invest.</li>
-<li><strong>Quotes sent vs jobs closed:</strong> Your close rate target is ${Math.min(95,Math.round(c.L.meta.close*100)+15)}% — up from your current ~${Math.round(c.L.meta.close*100)}%. Every untracked quote is invisible lost revenue.</li>
+<li><strong>Quotes or bookings sent vs closed:</strong> Your close rate target is ${Math.min(95,Math.round(c.L.meta.close*100)+15)}% — up from your current ~${Math.round(c.L.meta.close*100)}%. Every untracked quote is invisible lost revenue.</li>
 <li><strong>Average transaction value:</strong> Current ~${c.avgMid}. Flag any week where this drops more than 10% — it signals discounting or scope creep.</li>
 <li><strong>Pipeline value:</strong> Total value of all open quotes. If this number stays flat for 2+ weeks, your lead generation needs attention.</li>
 </ol></div>
@@ -1573,7 +1573,7 @@ Write specific hiring and team-building guidance for ${c.biz} — a ${c.ind} bus
 <li><strong>Third hire:</strong> Same format. By this point, what the team structure looks like for a ${c.ind} business at this stage.</li>
 </ol></div>
 <h4>Where to Find Good People for ${c.ind}</h4>
-<p>Specific recruiting channels that work for ${c.ind} in a market like ${c.city}: trade schools and apprenticeship programs, industry associations, job boards specific to the trade, staff referral incentives, social media recruiting. What the hiring competition looks like in ${c.ind} and how to win candidates without being the highest payer. 3–4 sentences.</p>
+<p>Specific recruiting channels that work for ${c.ind} in a market like ${c.city}: trade schools or industry-specific training programs and job boards, industry associations, staff referral incentives, social media recruiting. What the hiring competition looks like in ${c.ind} and how to win candidates without being the highest payer. 3–4 sentences.</p>
 <h4>Onboarding That Actually Works</h4>
 <p>Most ${c.ind} businesses hire someone and hand them a uniform. Describe what a proper 30-day onboarding looks like for the most common role in ${c.ind}: day 1, week 1, week 2–4, end of month 1 review. What documentation to have ready. The specific questions to answer in the first week that prevent 80% of early turnover in ${c.ind}. 3–4 sentences.</p>
 <h4>Retaining Your Best People</h4>
@@ -1601,7 +1601,7 @@ Write specific acquisition strategy guidance for ${c.biz} — a ${c.ind} busines
 <h4>How to Structure a ${c.ind} Acquisition</h4>
 <p>Common acquisition structures that work for ${c.ind} businesses at this stage: asset purchase vs share purchase, seller financing (where the seller takes payments over 2–5 years — reduces your upfront capital requirement significantly), earnout structures (where the seller earns part of the price based on retained revenue post-sale). Which structure is most common in ${c.ind} and why. 4–5 sentences — not legal advice, but operational orientation.</p>
 <h4>How to Find and Approach Targets</h4>
-<p>Specific methods for identifying acquisition targets in the ${c.ind} space in ${c.city}: direct cold outreach (what to say, what not to say), business brokers who specialize in ${c.ind} or trades, industry association relationships, word of mouth in the trade. The approach that gets the best response from owners who haven't publicly listed their business. Include a rough outreach script.</p>
+<p>Specific methods for identifying acquisition targets in the ${c.ind} space in ${c.city}: direct cold outreach (what to say, what not to say), business brokers who specialize in ${c.ind} or similar service businesses, industry association relationships, word of mouth in the trade. The approach that gets the best response from owners who haven't publicly listed their business. Include a rough outreach script.</p>
 <div class="script"><span class="slabel">Cold outreach to a potential acquisition target — email</span><p>[Complete 80-word email from a ${c.ind} business owner to another owner in ${c.city} — warm, respectful, no pressure, opens the conversation about future plans]</p></div>
 <h4>Due Diligence — What to Check Before You Sign</h4>
 <p>The 5 most important things to verify in a ${c.ind} acquisition: customer concentration risk (are 30%+ of revenues from one customer?), reason for selling (what's the owner not telling you?), staff retention risk (will key people leave?), equipment condition and maintenance records, and outstanding liabilities or complaints. Recommend hiring a qualified accountant and lawyer — but know what to look for yourself first. 3–4 sentences.</p>`,
