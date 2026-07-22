@@ -472,25 +472,25 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 // ══════════════════════════════════════════════════
 function svgBarChart(cats) {
   const maxAmt = Math.max(...cats.map(c => c.amt), 1);
-  const COLORS = { h:'#dc2626', m:'#d97706', l:'#16a34a' };
-  const rowH=44, labelW=190, barZone=360, height=cats.length*rowH+40, width=620;
+  const COLORS = { h:'#C1502E', m:'#B07A2A', l:'#6B7245' };
+  const rowH=44, labelW=190, barZone=340, height=cats.length*rowH+40, width=620;
   const rows = cats.map((cat, i) => {
     const barW = Math.max(4, Math.round((cat.amt/maxAmt)*barZone));
-    const y = 20+i*rowH, color = COLORS[cat.sev]||'#2557a7';
+    const y = 20+i*rowH, color = COLORS[cat.sev]||'#6B7245';
     const label = cat.n.length>28 ? cat.n.substring(0,27)+'…' : cat.n;
-    return `<text x="${labelW-8}" y="${y+16}" font-family="Arial,sans-serif" font-size="11.5" fill="#374151" text-anchor="end" dominant-baseline="middle">${label}</text>
+    return `<text x="${labelW-8}" y="${y+16}" font-family="Arial,sans-serif" font-size="11.5" fill="#4A423C" text-anchor="end" dominant-baseline="middle">${label}</text>
       <rect x="${labelW}" y="${y+4}" width="${barW}" height="22" rx="4" fill="${color}" opacity="0.82"/>
-      <text x="${labelW+barW+7}" y="${y+16}" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="${color}" dominant-baseline="middle">~$${cat.amt.toLocaleString()}</text>`;
+      <text x="${labelW+barW+7}" y="${y+16}" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="${color}" dominant-baseline="middle">~$${cat.amt.toLocaleString()}/mo</text>`;
   }).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${width}" height="${height}" rx="4" fill="#f9fafb"/>${rows}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${width}" height="${height}" rx="4" fill="#F7F5F2"/>${rows}</svg>`;
 }
  
 function svgLineChart(total) {
   const c15=Math.round(total*0.15), c22=Math.round(total*0.22), c32=Math.round(total*0.32);
   const datasets=[
-    {label:'Conservative (15%)',color:'#d97706',values:[0,Math.round(c15*0.15),Math.round(c15*0.50),c15]},
-    {label:'Realistic (22%)',color:'#2557a7',values:[0,Math.round(c22*0.20),Math.round(c22*0.55),c22]},
-    {label:'Optimistic (32%)',color:'#16a34a',values:[0,Math.round(c32*0.25),Math.round(c32*0.60),c32]},
+    {label:'Conservative (15%)',color:'#B07A2A',values:[0,Math.round(c15*0.15),Math.round(c15*0.50),c15]},
+    {label:'Realistic (22%)',color:'#C1502E',values:[0,Math.round(c22*0.20),Math.round(c22*0.55),c22]},
+    {label:'Optimistic (32%)',color:'#6B7245',values:[0,Math.round(c32*0.25),Math.round(c32*0.60),c32]},
   ];
   const W=580,H=220,padL=72,padR=20,padT=20,padB=56;
   const chartW=W-padL-padR, chartH=H-padT-padB, maxVal=c32*1.08;
@@ -506,7 +506,7 @@ function svgLineChart(total) {
     return `<polyline points="${pts}" fill="none" stroke="${ds.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>${dots}`;
   }).join('');
   const legend=datasets.map((ds,i)=>{const lx=padL+i*175;return `<rect x="${lx}" y="${H-20}" width="12" height="3" rx="2" fill="${ds.color}"/><text x="${lx+17}" y="${H-12}" font-family="Arial,sans-serif" font-size="10" fill="#4b5563">${ds.label}</text>`;}).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${W}" height="${H}" rx="4" fill="#f9fafb"/>${grids}<line x1="${padL}" y1="${padT+chartH}" x2="${W-padR}" y2="${padT+chartH}" stroke="#d1d5db" stroke-width="1.5"/>${xLabels}${lines}${legend}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${W}" height="${H}" rx="4" fill="#F7F5F2"/>${grids}<line x1="${padL}" y1="${padT+chartH}" x2="${W-padR}" y2="${padT+chartH}" stroke="#D9D4CC" stroke-width="1.5"/>${xLabels}${lines}${legend}</svg>`;
 }
  
 function svgScoreChart(sc) {
@@ -519,23 +519,26 @@ function svgScoreChart(sc) {
   const W=580,rowH=34,padL=90,padR=20,padT=16,barW=W-padL-padR,H=padT+cats.length*rowH+28;
   const rows=cats.map((cat,i)=>{
     const y=padT+i*rowH,yourW=Math.round((cat.score/100)*barW),benchX=padL+Math.round((cat.bench/100)*barW);
-    const color=cat.score>=cat.bench?'#16a34a':cat.score>=cat.bench*0.7?'#d97706':'#dc2626';
-    return `<text x="${padL-8}" y="${y+14}" font-family="Arial,sans-serif" font-size="11" fill="#374151" text-anchor="end">${cat.label}</text>
-      <rect x="${padL}" y="${y+4}" width="${barW}" height="16" rx="3" fill="#e5e7eb"/>
+    const color=cat.score>=cat.bench?'#6B7245':cat.score>=cat.bench*0.7?'#B07A2A':'#C1502E';
+    return `<text x="${padL-8}" y="${y+14}" font-family="Arial,sans-serif" font-size="11" fill="#4A423C" text-anchor="end">${cat.label}</text>
+      <rect x="${padL}" y="${y+4}" width="${barW}" height="16" rx="3" fill="#E8E4DE"/>
       <rect x="${padL}" y="${y+4}" width="${yourW}" height="16" rx="3" fill="${color}" opacity="0.8"/>
-      <line x1="${benchX}" y1="${y}" x2="${benchX}" y2="${y+24}" stroke="#6b7280" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <line x1="${benchX}" y1="${y}" x2="${benchX}" y2="${y+24}" stroke="#9A8C80" stroke-width="1.5" stroke-dasharray="3,2"/>
       <text x="${padL+yourW+5}" y="${y+15}" font-family="Arial,sans-serif" font-size="10" fill="${color}" font-weight="bold">${cat.score}</text>`;
   }).join('');
   const benchLegendX=padL+Math.round(0.60*barW);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${W}" height="${H}" rx="4" fill="#f9fafb"/>${rows}<text x="${benchLegendX}" y="${H-8}" font-family="Arial,sans-serif" font-size="9.5" fill="#6b7280" text-anchor="middle">--- Industry benchmark</text></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${W}" height="${H}" rx="4" fill="#F7F5F2"/>${rows}<text x="${benchLegendX}" y="${H-8}" font-family="Arial,sans-serif" font-size="9.5" fill="#6E6259" text-anchor="middle">--- Industry benchmark</text></svg>`;
 }
  
 // ══════════════════════════════════════════════════
-//  EMAIL / PDF HTML BUILDER
-//  Cover page: dark navy
-//  Section headers: dark navy
-//  Section body: white
+//  EMAIL / PDF HTML BUILDER — Workbench theme
+//  White #FFFFFF background (print-clean), ink #2B2320 text
+//  Poppins 800 title + section headings, Inter body
+//  Terracotta #C1502E accents, olive #6B7245 support
 // ══════════════════════════════════════════════════
+// Display-only monthly rounding: nearest $50 under $2k/mo, else nearest $100
+function moRound(n) { const m = n / 12; const s = m >= 2000 ? 100 : 50; return Math.max(s, Math.round(m / s) * s); }
+
 function buildEmailHtml(firstName, bizName, industry, calcData, sections) {
   const L = calcData;
   const date = new Date().toLocaleDateString('en-US', { month:'long', day:'numeric', year:'numeric' });
@@ -572,71 +575,39 @@ function buildEmailHtml(firstName, bizName, industry, calcData, sections) {
   const catKeyMap = { CONV:'Close rate', DEAD:'dormant', RET:'Retention', PRICE:'Pricing', CASH:'Cash', OPS:'Capacity', LEVERAGE:'Owner leverage' };
  
   const css = `
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@700;800&display=swap');
+
 /* ── Reset ── */
 * { box-sizing: border-box; margin: 0; padding: 0; }
  
-/* ── Base ── */
+/* ── Base — white Workbench ── */
 body {
-  font-family: Georgia, 'Times New Roman', serif;
-  background: #f0f2f7;
-  color: #1a202c;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
+  background: #FFFFFF;
+  color: #2B2320;
   font-size: 14px;
   line-height: 1.8;
   -webkit-font-smoothing: antialiased;
 }
 .wrap { max-width: 820px; margin: 0 auto; padding: 28px 16px; }
  
-/* ── COVER — dark navy, full brand ── */
+/* ── COVER — white, ink + terracotta ── */
 .cover {
-  background: #0f1f3d;
+  background: #FFFFFF;
+  border: 1px solid #E8E4DE;
   border-radius: 14px;
   padding: 48px 44px;
   margin-bottom: 20px;
-  color: white;
+  color: #2B2320;
   position: relative;
-  overflow: visible;  /* CHANGE from hidden to visible */
-}
-.cover::before {
-  content: '';
-  position: absolute;
-  top: -60px; right: -60px;
-  width: 280px; height: 280px;
-  border-radius: 50%;
-  background: rgba(255,64,64,0.08);
-  pointer-events: none;
-}
-.cover-tag {
-  display: inline-block;
-  font-family: Helvetica, Arial, sans-serif;
-  font-size: 10px; font-weight: 700;
-  letter-spacing: .18em; text-transform: uppercase;
-  color: #6ea8fe;
-  border: 1px solid rgba(110,168,254,0.3);
-  padding: 4px 12px; border-radius: 20px;
-  margin-bottom: 20px;
-}
-.cover-h {
-  font-family: Georgia, serif;
-  font-size: 36px; font-weight: 800;
-  line-height: 1.1; margin-bottom: 12px;
-  letter-spacing: -0.5px;
-}
-.cover-h .red { color: #ff6b6b; }
-.cover-range { font-size: 14px; color: rgba(255,255,255,.5); margin-bottom: 4px; font-family: Helvetica, Arial, sans-serif; }
-.cover-meta { font-size: 12px; color: rgba(255,255,255,.3); margin-bottom: 20px; font-family: Helvetica, Arial, sans-serif; }
-.cover-note {
-  background: rgba(255,255,255,.07);
-  border: 1px solid rgba(255,255,255,.1);
-  border-radius: 8px; padding: 10px 16px;
-  font-size: 11px; color: rgba(255,255,255,.45);
-  font-family: Helvetica, Arial, sans-serif; line-height: 1.6;
+  overflow: visible;
 }
  
 /* ── KPI STRIP ── */
 .kpi-strip {
   background: white; border-radius: 12px;
   padding: 0; margin-bottom: 16px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #E8E4DE;
   overflow: hidden;
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
@@ -644,54 +615,54 @@ body {
 .kpi-cell {
   display: table-cell; text-align: center;
   padding: 20px 12px;
-  border-right: 1px solid #e2e8f0;
+  border-right: 1px solid #E8E4DE;
   vertical-align: middle;
 }
 .kpi-cell:last-child { border-right: none; }
 .kpi-val {
-  font-family: Georgia, serif;
+  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif;
   font-size: 22px; font-weight: 800;
   line-height: 1.1; margin-bottom: 5px;
 }
 .kpi-lbl {
-  font-family: Helvetica, Arial, sans-serif;
-  font-size: 9.5px; color: #8d97aa;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
+  font-size: 9.5px; color: #9A8C80;
   text-transform: uppercase; letter-spacing: .1em;
   font-weight: 600;
 }
  
 /* ── BENCHMARK STRIP ── */
 .bench-strip {
-  background: white; border: 1px solid #e2e8f0;
+  background: white; border: 1px solid #E8E4DE;
   border-radius: 12px; padding: 20px 22px;
   margin-bottom: 16px;
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .bench-head {
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
   font-size: 10px; font-weight: 700;
   letter-spacing: .12em; text-transform: uppercase;
-  color: #6b7280; margin-bottom: 14px;
+  color: #6E6259; margin-bottom: 14px;
   padding-bottom: 10px;
-  border-bottom: 2px solid #0f1f3d;
+  border-bottom: 2px solid #C1502E;
 }
 .bench-row { display: table; width: 100%; border-collapse: separate; border-spacing: 8px; }
 .bench-cell { display: table-cell; width: 25%; }
 .bench-metric-box {
-  background: #f8fafc; border: 1px solid #e2e8f0;
+  background: #F7F5F2; border: 1px solid #E8E4DE;
   border-radius: 10px; padding: 14px 10px; text-align: center;
 }
 .bm-lbl {
-  font-family: Helvetica, Arial, sans-serif;
-  font-size: 9px; color: #9ca3af;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
+  font-size: 9px; color: #9A8C80;
   text-transform: uppercase; letter-spacing: .08em;
   margin-bottom: 8px; font-weight: 600;
 }
-.bm-you { font-family: Georgia, serif; font-size: 20px; font-weight: 800; line-height: 1; }
-.bm-vs { font-family: Helvetica, Arial, sans-serif; font-size: 9px; color: #9ca3af; margin: 5px 0 3px; }
-.bm-bench-val { font-family: Helvetica, Arial, sans-serif; font-size: 11px; color: #6b7280; margin-bottom: 6px; }
+.bm-you { font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 20px; font-weight: 800; line-height: 1; }
+.bm-vs { font-family: 'Inter', Helvetica, Arial, sans-serif; font-size: 9px; color: #9A8C80; margin: 5px 0 3px; }
+.bm-bench-val { font-family: 'Inter', Helvetica, Arial, sans-serif; font-size: 11px; color: #6E6259; margin-bottom: 6px; }
 .bm-tag {
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
   font-size: 9px; font-weight: 700;
   padding: 3px 8px; border-radius: 20px;
   display: inline-block; letter-spacing: .04em;
@@ -699,193 +670,196 @@ body {
  
 /* ── CHART SECTION ── */
 .chart-section {
-  background: white; border: 1px solid #e2e8f0;
+  background: white; border: 1px solid #E8E4DE;
   border-radius: 12px; margin-bottom: 16px; overflow: hidden;
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .chart-head {
-  background: #0f1f3d; padding: 13px 22px;
+  background: #FFFFFF; padding: 13px 22px;
+  border-bottom: 2px solid #E8E4DE;
   display: flex; align-items: center; gap: 12px;
 }
 .sec-num {
   display: inline-flex; align-items: center; justify-content: center;
   width: 28px; height: 28px;
-  background: rgba(255,255,255,0.12);
-  color: #6ea8fe; font-size: 11px; font-weight: 700;
+  background: rgba(193,80,46,0.10);
+  color: #C1502E; font-size: 11px; font-weight: 700;
   border-radius: 6px; flex-shrink: 0;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
   letter-spacing: .04em;
 }
 .sec-title-h {
-  font-family: Georgia, serif; font-size: 14px;
-  font-weight: 700; color: white;
+  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 14px;
+  font-weight: 800; color: #2B2320;
 }
 .chart-body { padding: 20px 22px; }
 .chart-label {
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
   font-size: 9.5px; font-weight: 700;
   letter-spacing: .12em; text-transform: uppercase;
-  color: #9ca3af; margin-bottom: 12px;
+  color: #9A8C80; margin-bottom: 12px;
 }
 .chart-wrap {
-  background: #f8fafc; border: 1px solid #e2e8f0;
+  background: #F7F5F2; border: 1px solid #E8E4DE;
   border-radius: 8px; padding: 14px; margin-bottom: 14px;
 }
 .chart-wrap:last-child { margin-bottom: 0; }
  
 /* ── REPORT SECTIONS ── */
 .rsec {
-  background: white; border: 1px solid #e2e8f0;
+  background: white; border: 1px solid #E8E4DE;
   border-radius: 12px; margin-bottom: 16px; overflow: hidden;
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .rsec-head {
-  background: #0f1f3d;
+  background: #FFFFFF;
+  border-bottom: 2px solid #E8E4DE;
   padding: 14px 24px;
   display: flex; align-items: center; justify-content: space-between;
 }
 .rsec-left { display: flex; align-items: center; gap: 12px; }
 .rsec-title {
-  font-family: Georgia, serif; font-size: 14px;
-  font-weight: 700; color: white; letter-spacing: 0;
+  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 14px;
+  font-weight: 800; color: #2B2320; letter-spacing: 0;
 }
 .rsec-amt {
-  font-family: Georgia, serif; font-size: 14px;
-  font-weight: 700; color: #ff6b6b; white-space: nowrap;
+  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 14px;
+  font-weight: 800; color: #C1502E; white-space: nowrap;
 }
 .rsec-body { padding: 24px 28px; background: white; }
  
 /* ── BODY CONTENT ── */
 p {
-  margin-bottom: 14px; color: #374151;
+  margin-bottom: 14px; color: #4A423C;
   font-size: 14px; line-height: 1.8;
-  font-family: Georgia, serif;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
 p:last-child { margin-bottom: 0; }
-strong { font-weight: 700; color: #111827; }
+strong { font-weight: 700; color: #2B2320; }
  
 /* Section subheadings */
 h4 {
-  font-family: Georgia, serif; font-size: 15px; font-weight: 700;
-  color: #0f1f3d; margin: 24px 0 10px;
+  font-family: 'Inter', Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 700;
+  color: #2B2320; margin: 24px 0 10px;
   padding-bottom: 8px;
-  border-bottom: 2px solid #e2e8f0;
+  border-bottom: 2px solid #E8E4DE;
   display: flex; align-items: center; gap: 8px;
 }
 h4::before {
   content: '';
   display: inline-block; width: 4px; height: 16px;
-  background: #ff4040; border-radius: 2px; flex-shrink: 0;
+  background: #C1502E; border-radius: 2px; flex-shrink: 0;
 }
 h5 {
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
   font-size: 10px; font-weight: 700;
   letter-spacing: .14em; text-transform: uppercase;
-  color: #2557a7; margin-bottom: 12px;
+  color: #6B7245; margin-bottom: 12px;
 }
  
 /* Lists */
 ul { margin: 10px 0 16px; padding: 0; list-style: none; }
 ul li {
   display: flex; gap: 10px; margin-bottom: 8px;
-  font-size: 14px; color: #4b5563; line-height: 1.7;
-  font-family: Georgia, serif;
+  font-size: 14px; color: #5A5049; line-height: 1.7;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
-ul li::before { content: '→'; color: #3b6fd4; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
+ul li::before { content: '→'; color: #6B7245; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
  
 ol { margin: 10px 0 16px; padding: 0; list-style: none; counter-reset: steps; }
 ol li {
   display: flex; gap: 14px; margin-bottom: 12px;
-  font-size: 14px; color: #4b5563; line-height: 1.7;
-  counter-increment: steps; font-family: Georgia, serif;
-  padding: 10px 14px; background: #f8fafc;
-  border: 1px solid #e2e8f0; border-radius: 8px;
+  font-size: 14px; color: #5A5049; line-height: 1.7;
+  counter-increment: steps; font-family: 'Inter', Helvetica, Arial, sans-serif;
+  padding: 10px 14px; background: #F7F5F2;
+  border: 1px solid #E8E4DE; border-radius: 8px;
 }
 ol li::before {
   content: counter(steps);
   display: inline-flex; align-items: center; justify-content: center;
   min-width: 24px; height: 24px; border-radius: 50%;
-  background: #0f1f3d; color: #6ea8fe;
+  background: rgba(107,114,69,0.12); color: #6B7245;
   font-size: 11px; font-weight: 700; flex-shrink: 0;
-  font-family: Helvetica, Arial, sans-serif; margin-top: 1px;
+  font-family: 'Inter', Helvetica, Arial, sans-serif; margin-top: 1px;
 }
  
 /* ── QUICK WIN — amber, prominent ── */
 .quick-win {
   background: #fffbeb;
   border: 1px solid #fde68a;
-  border-left: 5px solid #f59e0b;
+  border-left: 5px solid #B07A2A;
   border-radius: 0 10px 10px 0;
   padding: 14px 18px; margin: 0 0 20px 0;
   font-size: 13.5px; color: #78350f; font-weight: 600;
-  line-height: 1.6; font-family: Helvetica, Arial, sans-serif;
+  line-height: 1.6; font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
  
-/* ── SCRIPTS — dark editorial ── */
+/* ── SCRIPTS ── */
 .script {
-  background: #0f1f3d;
+  background: #F7F5F2;
+  border: 1px solid #E8E4DE;
   border-radius: 10px;
   padding: 0; margin: 14px 0; overflow: hidden;
 }
 .slabel {
   display: block;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
   font-size: 9.5px; font-weight: 700;
   letter-spacing: .16em; text-transform: uppercase;
-  color: #93c5fd;
+  color: #6B7245;
   padding: 10px 18px;
-  border-bottom: 1px solid rgba(255,255,255,.08);
-  background: rgba(0,0,0,.2);
+  border-bottom: 1px solid #E8E4DE;
+  background: #F0EDE8;
 }
 .script p {
-  color: #e2e8f0 !important;
-  font-size: 13px; font-style: italic;
+  color: #4A423C !important;
+  font-size: 13px;
   line-height: 1.8; margin: 0;
   padding: 14px 18px;
-  font-family: Georgia, serif;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
-.script strong { color: #ffffff !important; font-style: normal; }
+.script strong { color: #2B2320 !important; }
  
 /* ── ACTION BOX ── */
 .action-box {
-  background: #eff6ff;
-  border: 1px solid #bfdbfe;
-  border-left: 5px solid #2557a7;
+  background: #F7F5F2;
+  border: 1px solid #E8E4DE;
+  border-left: 5px solid #6B7245;
   border-radius: 0 10px 10px 0;
   padding: 16px 20px; margin: 14px 0;
 }
 .action-box h5 {
-  color: #1e40af; margin-bottom: 12px;
+  color: #6B7245; margin-bottom: 12px;
 }
  
 /* ── STAT CALLOUT ── */
 .stat-call {
-  background: #f0f9ff;
-  border: 1px solid #bae6fd;
-  border-left: 5px solid #0284c7;
+  background: rgba(107,114,69,0.08);
+  border: 1px solid rgba(107,114,69,0.2);
+  border-left: 5px solid #6B7245;
   border-radius: 0 10px 10px 0;
   padding: 12px 16px; margin: 14px 0;
-  font-size: 13px; color: #0c4a6e;
+  font-size: 13px; color: #4A5230;
   font-weight: 600; line-height: 1.65;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
  
 /* ── DISCLAIMER ── */
 .disclaimer {
-  background: #f9fafb; border: 1px solid #e5e7eb;
+  background: #F7F5F2; border: 1px solid #E8E4DE;
   border-radius: 8px; padding: 10px 14px;
   margin: 12px 0; font-size: 11.5px;
-  color: #6b7280; font-style: italic; line-height: 1.55;
-  font-family: Helvetica, Arial, sans-serif;
+  color: #9A8C80; line-height: 1.55;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
  
 /* ── TABLES ── */
 table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
-thead tr { background: #0f1f3d; }
+thead tr { background: #2B2320; }
 th {
-  background: #0f1f3d; color: #93c5fd;
+  background: #2B2320; color: #FFF8F0;
   padding: 10px 14px; text-align: left;
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
   font-size: 9.5px; font-weight: 700;
   letter-spacing: .1em; text-transform: uppercase;
 }
@@ -893,75 +867,76 @@ th:first-child { border-radius: 6px 0 0 0; }
 th:last-child { border-radius: 0 6px 0 0; }
 td {
   padding: 10px 14px;
-  border-bottom: 1px solid #e5e7eb;
-  color: #4b5563; vertical-align: top;
-  font-family: Georgia, serif;
+  border-bottom: 1px solid #E8E4DE;
+  color: #5A5049; vertical-align: top;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
   font-size: 13px;
 }
 tr:last-child td { border-bottom: none; }
-tr:nth-child(even) td { background: #f8fafc; }
-tr:hover td { background: #f1f5f9; }
+tr:nth-child(even) td { background: #F7F5F2; }
+tr:hover td { background: #F0EDE8; }
  
 /* ── PLAN GRID ── */
 .pgrid { display: block; }
 .pcard {
-  background: #f8fafc;
-  border: 1px solid #e2e8f0;
+  background: #F7F5F2;
+  border: 1px solid #E8E4DE;
   border-radius: 10px; padding: 18px 20px; margin-bottom: 12px;
 }
 .ptag {
-  font-family: Helvetica, Arial, sans-serif;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
   font-size: 9.5px; font-weight: 700;
   letter-spacing: .14em; text-transform: uppercase;
-  color: #6ea8fe; margin-bottom: 4px;
-  background: #0f1f3d; display: inline-block;
+  color: #FFF8F0; margin-bottom: 4px;
+  background: #6B7245; display: inline-block;
   padding: 3px 10px; border-radius: 20px;
   margin-bottom: 8px;
 }
 .ptitle {
-  font-family: Georgia, serif;
-  font-size: 15px; font-weight: 700;
-  color: #0f1f3d; margin-bottom: 12px;
+  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif;
+  font-size: 15px; font-weight: 800;
+  color: #2B2320; margin-bottom: 12px;
 }
 .ptask {
   display: flex; gap: 8px; margin-bottom: 8px;
-  font-size: 13px; color: #4b5563; line-height: 1.6;
-  align-items: flex-start; font-family: Georgia, serif;
+  font-size: 13px; color: #5A5049; line-height: 1.6;
+  align-items: flex-start; font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
 .ptask::before {
-  content: '→'; color: #3b6fd4; flex-shrink: 0;
+  content: '→'; color: #6B7245; flex-shrink: 0;
   font-weight: 700; margin-top: 1px;
 }
 .pmile {
-  background: #0f1f3d; border-radius: 8px;
+  background: #FFFFFF; border: 1px solid #E8E4DE; border-radius: 8px;
   padding: 10px 14px; margin-top: 12px;
-  font-size: 12px; color: #93c5fd;
+  font-size: 12px; color: #4A5230;
   font-weight: 600; line-height: 1.6;
-  font-family: Helvetica, Arial, sans-serif;
-  border-left: 4px solid #ff6b6b;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
+  border-left: 4px solid #C1502E;
 }
  
 /* ── FOOTER ── */
 .footer {
-  background: #0f1f3d; border-radius: 12px;
+  background: #FFFFFF; border: 2px solid #C1502E; border-radius: 12px;
   padding: 32px; text-align: center; margin-top: 20px;
 }
 .footer h3 {
-  font-family: Georgia, serif;
-  font-size: 20px; font-weight: 700;
-  color: white; margin-bottom: 8px;
+  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif;
+  font-size: 20px; font-weight: 800;
+  color: #2B2320; margin-bottom: 8px;
 }
 .footer p {
-  font-family: Helvetica, Arial, sans-serif;
-  font-size: 12px; color: rgba(255,255,255,.4);
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
+  font-size: 12px; color: #9A8C80;
   margin-bottom: 3px;
 }
 blockquote {
-  background: #0f1f3d; border-radius: 8px;
+  background: #F7F5F2; border: 1px solid #E8E4DE; border-radius: 8px;
   padding: 16px 20px; margin: 14px 0;
-  color: rgba(255,255,255,.85); font-size: 13px;
-  font-style: italic; line-height: 1.8;
-  font-family: Georgia, serif;
+  color: #4A423C; font-size: 13px;
+  line-height: 1.8;
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
+  border-left: 4px solid #6B7245;
 }
  
 /* ── PAGE BREAK RULES (apply always, not just in print) ── */
@@ -1058,12 +1033,12 @@ ul li {
 @media print {
   body { background: white; }
   .cover { border-radius: 0; }
-  .rsec { border-radius: 0; overflow: visible !important; }  /* ADD overflow: visible */
-  .rsec-head { background: #0f1f3d !important; }
-  .script { background: #0f1f3d !important; }
-  .script p { color: #e2e8f0 !important; }
+  .rsec { border-radius: 0; overflow: visible !important; }
+  .rsec-head { background: #FFFFFF !important; }
+  .script { background: #F7F5F2 !important; }
+  .script p { color: #4A423C !important; }
   .footer { border-radius: 0; }
-  .chart-section { overflow: visible !important; }  /* ADD this too */
+  .chart-section { overflow: visible !important; }
 }
 `;
  
@@ -1082,17 +1057,18 @@ ul li {
     <div class="bench-head">Industry comparison — ${bench.label} (Source: ${bench.source})</div>
     <div class="bench-row">${bm.map(m=>{
       const status = m.youN >= m.benchN ? 'above' : m.youN >= m.benchN * 0.8 ? 'at' : 'below';
-      const tagStyle=status==='above'?'background:rgba(22,163,74,.12);color:#16a34a':status==='at'?'background:rgba(217,119,6,.12);color:#d97706':'background:rgba(220,38,38,.12);color:#dc2626';
-      const numColor=status==='above'?'#16a34a':status==='at'?'#d97706':'#dc2626';
+      const tagStyle=status==='above'?'background:rgba(107,114,69,.12);color:#6B7245':status==='at'?'background:rgba(176,122,42,.12);color:#B07A2A':'background:rgba(193,80,46,.12);color:#C1502E';
+      const numColor=status==='above'?'#6B7245':status==='at'?'#B07A2A':'#C1502E';
       return `<div class="bench-cell"><div class="bench-metric-box"><div class="bm-lbl">${m.label}</div><div class="bm-you" style="color:${numColor}">${m.you}</div><div class="bm-vs">vs avg</div><div class="bm-bench-val">${m.bench}</div><div class="bm-tag" style="${tagStyle}">${status==='above'?'Above avg':status==='at'?'Near avg':'Below avg'}</div></div></div>`;
     }).join('')}</div>
   </div>`;
  
-  // Chart section
+  // Chart section — bar chart shown in monthly figures (display-only conversion)
+  const catsMonthly = L.cats.map(c => ({ ...c, amt: moRound(c.amt) }));
   const chartSection = `<div class="chart-section">
     <div class="chart-head"><div class="sec-num">00</div><div class="sec-title-h">Performance Dashboard — Visual Overview</div></div>
     <div class="chart-body">
-      <div class="chart-wrap"><div class="chart-label">Estimated revenue opportunity by category</div>${svgBarChart(L.cats)}</div>
+      <div class="chart-wrap"><div class="chart-label">Estimated monthly leak by category</div>${svgBarChart(catsMonthly)}</div>
       <div class="chart-wrap"><div class="chart-label">Your performance score vs industry benchmark</div>${svgScoreChart(L.sc)}</div>
       <div class="chart-wrap"><div class="chart-label">Conservative 90-day recovery projection</div>${svgLineChart(L.total)}</div>
     </div>
@@ -1107,7 +1083,7 @@ ul li {
     sectionsHtml += `<div class="rsec">
       <div class="rsec-head">
         <div class="rsec-left"><div class="sec-num">${String(i + 1).padStart(2,'0')}</div><div class="rsec-title">${sectionTitles[k]}</div></div>
-        ${catMatch?`<div class="rsec-amt">~$${catMatch.amt.toLocaleString()}/yr</div>`:''}
+        ${catMatch?`<div class="rsec-amt">~$${moRound(catMatch.amt).toLocaleString()}/mo</div>`:''}
       </div>
       <div class="rsec-body">${sections[k]}</div>
     </div>`;
@@ -1121,73 +1097,80 @@ ul li {
     <div class="rsec-body">
       <p>This audit was built by an operator, not a marketing agency. The same person who wrote the diagnostic math walks businesses through fixing it: systems and AI automation, customer experience, sales process, and day-to-day operations. No ad budgets, no content calendars. Just the operational fixes quantified in the sections above.</p>
       <h4>Your 30-Minute Walkthrough Call Is Included</h4>
-      <p>Every Revenue Leak Audit includes a 30-minute walkthrough call. Bring this report. We will confirm your top leak, sanity-check the numbers against your real books, and leave you with the first three moves in order. Book your free 30-minute call here: <strong><a href="https://calendly.com/flaviod022/discovery-call-flavio-deoliveira" style="color:#2557a7;">https://calendly.com/flaviod022/discovery-call-flavio-deoliveira</a></strong></p>
+      <p>Every Revenue Leak Audit includes a 30-minute walkthrough call. Bring this report. We will confirm your top leak, sanity-check the numbers against your real books, and leave you with the first three moves in order. Book your free 30-minute call here: <strong><a href="https://calendly.com/flaviod022/discovery-call-flavio-deoliveira" style="color:#C1502E;">https://calendly.com/flaviod022/discovery-call-flavio-deoliveira</a></strong></p>
       <h4>If You Want The Fixes Implemented For You</h4>
       <ul>
         <li><strong>Systems & automation:</strong> follow-up sequences, quoting, invoicing, and admin automated so the leaks stay closed.</li>
         <li><strong>Sales process:</strong> speed-to-lead, structured follow-up, and close-rate discipline installed and measured.</li>
         <li><strong>Operations & CX:</strong> scheduling, job costing, collections, and the SOPs that let the business run without you.</li>
       </ul>
-      <p>Book directly at <strong><a href="https://calendly.com/flaviod022/discovery-call-flavio-deoliveira" style="color:#2557a7;">https://calendly.com/flaviod022/discovery-call-flavio-deoliveira</a></strong> or email <strong><a href="mailto:flaviod022@gmail.com" style="color:#2557a7;">flaviod022@gmail.com</a></strong> with the subject line "Audit walkthrough" and your business name. Replies within one business day.</p>
+      <p>Book directly at <strong><a href="https://calendly.com/flaviod022/discovery-call-flavio-deoliveira" style="color:#C1502E;">https://calendly.com/flaviod022/discovery-call-flavio-deoliveira</a></strong> or email <strong><a href="mailto:flaviod022@gmail.com" style="color:#C1502E;">flaviod022@gmail.com</a></strong> with the subject line "Audit walkthrough" and your business name. Replies within one business day.</p>
     </div>
   </div>`;
 
-  const legalHtml = `<div style="background:#f8f9fc;border:1px solid #e4e8f0;border-radius:10px;padding:22px;margin-bottom:16px;">
-    <div style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#8d97aa;margin-bottom:12px;">Important Notices & Disclaimers</div>
-    <p style="font-size:12px;color:#5a6478;line-height:1.7;margin-bottom:8px;"><strong style="color:#0f1f3d;">No Refund Policy:</strong> This report is a personalised, AI-generated diagnostic document. All sales are final once delivered.</p>
-    <p style="font-size:12px;color:#5a6478;line-height:1.7;margin-bottom:8px;"><strong style="color:#0f1f3d;">Not Professional Advice:</strong> Content is for informational purposes only. Consult qualified professionals before making significant business decisions.</p>
-    <p style="font-size:12px;color:#5a6478;line-height:1.7;margin-bottom:8px;"><strong style="color:#0f1f3d;">Estimates Only:</strong> All revenue figures are based on the ranges you self-reported. They are directional estimates, not guarantees.</p>
-    <p style="font-size:12px;color:#5a6478;line-height:1.7;margin-bottom:0;"><strong style="color:#0f1f3d;">Data & Privacy:</strong> Your information is used solely to generate your report and will not be sold to third parties.</p>
+  const legalHtml = `<div style="background:#F7F5F2;border:1px solid #E8E4DE;border-radius:10px;padding:22px;margin-bottom:16px;">
+    <div style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#9A8C80;margin-bottom:12px;">Important Notices & Disclaimers</div>
+    <p style="font-size:12px;color:#6E6259;line-height:1.7;margin-bottom:8px;"><strong style="color:#2B2320;">No Refund Policy:</strong> This report is a personalised, AI-generated diagnostic document. All sales are final once delivered.</p>
+    <p style="font-size:12px;color:#6E6259;line-height:1.7;margin-bottom:8px;"><strong style="color:#2B2320;">Not Professional Advice:</strong> Content is for informational purposes only. Consult qualified professionals before making significant business decisions.</p>
+    <p style="font-size:12px;color:#6E6259;line-height:1.7;margin-bottom:8px;"><strong style="color:#2B2320;">Estimates Only:</strong> All revenue figures are based on the ranges you self-reported. They are directional estimates, not guarantees.</p>
+    <p style="font-size:12px;color:#6E6259;line-height:1.7;margin-bottom:0;"><strong style="color:#2B2320;">Data & Privacy:</strong> Your information is used solely to generate your report and will not be sold to third parties.</p>
   </div>`;
  
   const greeting = firstName ? firstName : '';
+  const moTotal = moRound(L.total);
   const coverHtml = `
   <div class="cover" style="min-height:260mm;display:flex;flex-direction:column;justify-content:space-between;">
     <div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:60px;">
-        <div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.35);">RevAnalysis</div>
-        <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:rgba(110,168,254,.7);border:1px solid rgba(110,168,254,.25);padding:4px 12px;border-radius:20px;">Confidential · Revenue Recovery Report</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:56px;">
+        <div style="display:inline-block;">
+          <div style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.3px;color:#2B2320;">RevAnalysis</div>
+          <div style="height:3px;background:#C1502E;border-radius:2px;margin-top:3px;"></div>
+        </div>
+        <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#6B7245;border:1px solid rgba(107,114,69,.35);padding:4px 12px;border-radius:20px;">Confidential · Revenue Leak Audit</div>
       </div>
 
-      <div style="margin-bottom:48px;">
-        <div style="font-family:Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:16px;">Prepared for</div>
-        <div style="font-family:Georgia,serif;font-size:42px;font-weight:800;color:white;line-height:1.1;letter-spacing:-1px;margin-bottom:8px;">${greeting || bizName}</div>
-        <div style="font-family:Georgia,serif;font-size:22px;font-weight:400;color:rgba(255,255,255,.6);margin-bottom:4px;">${bizName}</div>
-        <div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:rgba(255,255,255,.3);">${industry}</div>
+      <div style="margin-bottom:44px;">
+        <div style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:40px;font-weight:800;color:#2B2320;line-height:1.1;letter-spacing:-1px;">Revenue Leak Audit</div>
+        <div style="width:72px;height:4px;background:#C1502E;border-radius:2px;margin-top:14px;"></div>
       </div>
 
-      <div style="width:60px;height:3px;background:linear-gradient(to right,#ff6b6b,rgba(255,107,107,0.2));border-radius:2px;margin-bottom:48px;"></div>
+      <div style="margin-bottom:44px;">
+        <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#9A8C80;margin-bottom:14px;">Prepared for</div>
+        <div style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:34px;font-weight:800;color:#2B2320;line-height:1.15;letter-spacing:-0.5px;margin-bottom:8px;">${greeting || bizName}</div>
+        <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:18px;font-weight:500;color:#6E6259;margin-bottom:4px;">${bizName}</div>
+        <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:#9A8C80;">${industry}</div>
+      </div>
 
-      <div style="margin-bottom:48px;">
-        <div style="font-family:Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:rgba(255,255,255,.35);margin-bottom:12px;">Estimated Revenue Opportunity</div>
-        <div style="font-family:Georgia,serif;font-size:56px;font-weight:800;color:#ff6b6b;line-height:1;letter-spacing:-2px;margin-bottom:8px;">~$${L.total.toLocaleString()}</div>
-        <div style="font-family:Helvetica,Arial,sans-serif;font-size:13px;color:rgba(255,255,255,.4);">Conservative range: $${L.totalLo.toLocaleString()} – $${L.totalHi.toLocaleString()}</div>
+      <div style="margin-bottom:44px;">
+        <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#9A8C80;margin-bottom:12px;">Estimated Monthly Leak</div>
+        <div style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:56px;font-weight:800;color:#C1502E;line-height:1;letter-spacing:-2px;margin-bottom:8px;">~$${moTotal.toLocaleString()}/mo</div>
+        <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:#6E6259;">about $${L.total.toLocaleString()} a year · conservative range $${L.totalLo.toLocaleString()} – $${L.totalHi.toLocaleString()}</div>
       </div>
 
       <div style="display:flex;gap:32px;">
         <div>
-          <div style="font-family:Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:4px;">Biggest Opportunity</div>
-          <div style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#6ea8fe;">~$${L.cats[0].amt.toLocaleString()}</div>
-          <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.3);margin-top:2px;">${L.cats[0].n}</div>
+          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9A8C80;margin-bottom:4px;">Biggest Leak</div>
+          <div style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:18px;font-weight:800;color:#C1502E;">~$${moRound(L.cats[0].amt).toLocaleString()}/mo</div>
+          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:#9A8C80;margin-top:2px;">${L.cats[0].n}</div>
         </div>
-        <div style="width:1px;background:rgba(255,255,255,.08);"></div>
+        <div style="width:1px;background:#E8E4DE;"></div>
         <div>
-          <div style="font-family:Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:4px;">Realistic 90-Day Target</div>
-          <div style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#4ade80;">~$${Math.round(L.total*0.22).toLocaleString()}</div>
-          <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.3);margin-top:2px;">Conservative estimate</div>
+          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9A8C80;margin-bottom:4px;">Realistic 90-Day Target</div>
+          <div style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:18px;font-weight:800;color:#6B7245;">~$${Math.round(L.total*0.22).toLocaleString()}</div>
+          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:#9A8C80;margin-top:2px;">Conservative estimate</div>
         </div>
-        <div style="width:1px;background:rgba(255,255,255,.08);"></div>
+        <div style="width:1px;background:#E8E4DE;"></div>
         <div>
-          <div style="font-family:Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.3);margin-bottom:4px;">Walkthrough Call</div>
-          <div style="font-family:Georgia,serif;font-size:18px;font-weight:700;color:#6ea8fe;">30 min</div>
-          <div style="font-family:Helvetica,Arial,sans-serif;font-size:10px;color:rgba(255,255,255,.3);margin-top:2px;">Included with your audit</div>
+          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9A8C80;margin-bottom:4px;">Walkthrough Call</div>
+          <div style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:18px;font-weight:800;color:#6B7245;">30 min</div>
+          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:#9A8C80;margin-top:2px;">Included with your audit</div>
         </div>
       </div>
     </div>
 
-    <div style="border-top:1px solid rgba(255,255,255,.08);padding-top:20px;display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:rgba(255,255,255,.25);">Generated by RevAnalysis · ${date}</div>
-      <div style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:rgba(255,255,255,.25);">revanalysis.com</div>
+    <div style="border-top:1px solid #E8E4DE;padding-top:20px;display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:#9A8C80;">Generated by RevAnalysis · ${date}</div>
+      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:#9A8C80;">revanalysis.com</div>
     </div>
   </div>`;
 
@@ -1198,10 +1181,10 @@ ul li {
 <body><div class="wrap">
   ${coverHtml}
   <div class="kpi-strip"><div class="kpi-row">
-    <div class="kpi-cell"><div class="kpi-val" style="color:#dc2626;">~$${L.total.toLocaleString()}</div><div class="kpi-lbl">Est. annual opportunity</div></div>
-    <div class="kpi-cell"><div class="kpi-val" style="color:#6ea8fe;">~$${L.cats[0].amt.toLocaleString()}</div><div class="kpi-lbl">Biggest opportunity</div></div>
-    <div class="kpi-cell"><div class="kpi-val" style="color:#16a34a;">~$${rec22.toLocaleString()}</div><div class="kpi-lbl">Realistic 90-day target</div></div>
-    <div class="kpi-cell"><div class="kpi-val" style="color:#6ea8fe;">30 min</div><div class="kpi-lbl">Walkthrough call included</div></div>
+    <div class="kpi-cell"><div class="kpi-val" style="color:#C1502E;">~$${moTotal.toLocaleString()}/mo</div><div class="kpi-lbl">Est. monthly leak</div></div>
+    <div class="kpi-cell"><div class="kpi-val" style="color:#6B7245;">~$${moRound(L.cats[0].amt).toLocaleString()}/mo</div><div class="kpi-lbl">Biggest leak</div></div>
+    <div class="kpi-cell"><div class="kpi-val" style="color:#6B7245;">~$${rec22.toLocaleString()}</div><div class="kpi-lbl">Realistic 90-day target</div></div>
+    <div class="kpi-cell"><div class="kpi-val" style="color:#6B7245;">30 min</div><div class="kpi-lbl">Walkthrough call included</div></div>
   </div></div>
   ${bmHtml}
   ${chartSection}
@@ -1211,7 +1194,7 @@ ul li {
   <div class="footer">
     <h3>Your audit is complete</h3>
     <p>Generated by RevAnalysis &middot; ${date}</p>
-    <p>All figures are conservative estimates. PDF copy attached to this email. Your 30-minute walkthrough call is included. <a href="https://calendly.com/flaviod022/discovery-call-flavio-deoliveira" style="color:#6ea8fe;">Book your free 30-minute call</a>.</p>
+    <p>All figures are conservative estimates. PDF copy attached to this email. Your 30-minute walkthrough call is included. <a href="https://calendly.com/flaviod022/discovery-call-flavio-deoliveira" style="color:#C1502E;">Book your free 30-minute call</a>.</p>
   </div>
 </div></body></html>`;
 }
@@ -1260,11 +1243,11 @@ async function sendEmail({ to, firstName, bizName, reportHtml, pdfBase64, pdfFil
   
   // Add download button to top of email if we have a URL
   const downloadBanner = pdfUrl ? `
-    <div style="background:#0f1f3d;padding:16px 24px;text-align:center;margin-bottom:0;">
-      <a href="${pdfUrl}" style="display:inline-block;background:#ff6b6b;color:white;font-family:Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;padding:12px 32px;border-radius:6px;text-decoration:none;">
+    <div style="background:#2B2320;padding:16px 24px;text-align:center;margin-bottom:0;">
+      <a href="${pdfUrl}" style="display:inline-block;background:#C1502E;color:#FFF8F0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;font-weight:700;padding:12px 32px;border-radius:999px;text-decoration:none;">
         ⬇ Download Your PDF Report
       </a>
-      <p style="font-family:Helvetica,Arial,sans-serif;font-size:11px;color:rgba(255,255,255,.4);margin:8px 0 0;">
+      <p style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:rgba(255,248,240,.5);margin:8px 0 0;">
         Your PDF is ready — click above to download
       </p>
     </div>` : '';
@@ -1331,6 +1314,7 @@ function buildServerContext(bizName, industry, calcData, answers, firstName, las
     schedLabel: ['chaotic with frequent callbacks','loose with weekly lost time','decent with occasional gaps','tight and optimized'][Math.min(a.schedEff??1,3)],
     ownerDepLabel: ['everything stalls without the owner','major issues and firefighting','minor hiccups. team covers most of it','runs fine without the owner'][Math.min(a.ownerDep??1,3)],
     total:`~$${L.total.toLocaleString()}`, totalRange:`$${L.totalLo.toLocaleString()}–$${L.totalHi.toLocaleString()}`,
+    totalMo:`~$${moRound(L.total).toLocaleString()}/month`,
     // Quiz answers the owner marked "I'm not sure" (conservative defaults were applied)
     estKeys: (Array.isArray(a.estimatedKeys) && a.estimatedKeys.length) ? a.estimatedKeys.join(', ') : '',
     top3, goal, bench,
@@ -1349,7 +1333,7 @@ function sysPrompt(c) {
 CLIENT DATA:
 - Revenue: ${c.revRange} (conservative low: ${c.revLo}) | Avg transaction: ~${c.avgMid}
 - Monthly leads: ~${c.mthLeads} | Close rate: ~${c.close} | Annual customers: ~${c.annCusts}
-- Total opportunity: ${c.total} (range: ${c.totalRange})
+- Total opportunity: ${c.totalMo} (about ${c.total}/year; range: ${c.totalRange})
 - Top 3: ${c.top3} | Scores: ${c.scores} | Goal: ${c.goal}
 - Team size: ~${c.teamSize} people
 - Manual admin: ~${c.adminH} hrs/week | Payment collection: ${c.payLabel} | Job costing: ${c.jobCostingLabel}
@@ -1377,8 +1361,9 @@ RULES — NON-NEGOTIABLE:
 14. Reference benchmarks: "The average ${c.ind} business closes ${c.bench.closeRate}%. You're at X%. That gap costs $Y."
 15. START every section (except EXEC and BENCH) with: <div class="quick-win">⚡ Quick Win — [One specific action THIS WEEK — concrete, ${c.ind}-specific, doable in under 1 hour]</div>
 16. USE ONLY the benchmark figures provided above. Do NOT use your own training knowledge for benchmarks. The retention benchmark for this industry is ${c.bench.retention}%, not any other figure. The review benchmark is ${c.bench.reviewCount}, not any other figure.
-17. This business is located in ${c.city}, which is in the United States. Use ONLY US-specific platforms, directories, regulations, and market data. Never reference Australian platforms (HiPages, Oneflare, ServiceSeeking, Hipages), Australian regulators (WorkSafe, Fair Work), or Australian statistics.
-18. HTML only: <p>, <strong>, <h4>, <ul><li>, <ol><li>, <table>, <div class="stat-call">, <div class="script"><span class="slabel">...</span><p>...</p></div>, <div class="action-box"><h5>...</h5><ol>...</ol></div>, <div class="disclaimer">, <div class="quick-win">`;
+17. MONTHLY FIRST: Lead with monthly dollar figures. When citing the total opportunity or any leak category figure, state the per-month number first (divide annual by 12, round sensibly); you may add the annual figure in parentheses once per section. The client's total estimated leak is ${c.totalMo}.
+18. This business is located in ${c.city}, which is in the United States. Use ONLY US-specific platforms, directories, regulations, and market data. Never reference Australian platforms (HiPages, Oneflare, ServiceSeeking, Hipages), Australian regulators (WorkSafe, Fair Work), or Australian statistics.
+19. HTML only: <p>, <strong>, <h4>, <ul><li>, <ol><li>, <table>, <div class="stat-call">, <div class="script"><span class="slabel">...</span><p>...</p></div>, <div class="action-box"><h5>...</h5><ol>...</ol></div>, <div class="disclaimer">, <div class="quick-win">`;
 }
  
 function buildSectionPrompt(key, c) {
@@ -1399,7 +1384,7 @@ function buildSectionPrompt(key, c) {
   const qwLo = Math.round(qwContacts * 0.05 * qwAvgNum).toLocaleString();
   const qwHi = Math.round(qwContacts * 0.10 * qwAvgNum).toLocaleString();
   const prompts = {
-    EXEC:`${base}\nWrite ONLY the [EXEC] section. First line: [EXEC]\n\n5 focused paragraphs (~280 words):\n- Para 1: Open with ~${c.total} opportunity (range: ${c.totalRange}). Conservative language. Compelling ${c.ind}-specific analogy.\n- Para 2: Why ${c.ind} businesses specifically lose revenue this way — structural reasons.\n- Para 3: Top 3 opportunities: ${c.top3}. Dollar context and interconnection.\n- Para 4: What the next 90 days looks like. Realistic. Quote "businesses in ${c.ind} typically recover 15–25% in 90 days."\n- Para 5: Mindset shift from reactive to systematic. What top ${c.ind} businesses do differently.\n<div class="stat-call">One real industry statistic with source name relevant to ${c.ind}.</div>\n<div class="disclaimer">All figures are estimates based on the ranges you provided. Actual results depend on your situation and implementation consistency.</div>`,
+    EXEC:`${base}\nWrite ONLY the [EXEC] section. First line: [EXEC]\n\n5 focused paragraphs (~280 words):\n- Para 1: Open with the ${c.totalMo} leak (about ${c.total} a year; range: ${c.totalRange}). Lead with the monthly figure. Conservative language. Compelling ${c.ind}-specific analogy.\n- Para 2: Why ${c.ind} businesses specifically lose revenue this way — structural reasons.\n- Para 3: Top 3 opportunities: ${c.top3}. Dollar context and interconnection.\n- Para 4: What the next 90 days looks like. Realistic. Quote "businesses in ${c.ind} typically recover 15–25% in 90 days."\n- Para 5: Mindset shift from reactive to systematic. What top ${c.ind} businesses do differently.\n<div class="stat-call">One real industry statistic with source name relevant to ${c.ind}.</div>\n<div class="disclaimer">All figures are estimates based on the ranges you provided. Actual results depend on your situation and implementation consistency.</div>`,
 
     QUICKWIN:`${base}\nWrite ONLY the [QUICKWIN] section. First line: [QUICKWIN]\n\nThis section appears right after the executive summary and is the FIRST thing the reader acts on. One play only: reactivating their dead and dormant quotes. They reported approximately ${c.dead} unanswered or dormant quotes sitting in their pipeline. The play must be doable TODAY, cost $0, and require no marketing, no ads, and no new software. Just their phone and their quote list.\n\n<h4>The Play: Reactivate Your ${qwContacts} Most Recent Dead Quotes</h4>\n<p>2-3 sentences: pull the ${qwContacts} most recent unconverted quotes and work ONLY those today. Why recency matters for reactivation in ${c.ind}.</p>\n<h4>The Exact Sequence: 2 Texts + 1 Call</h4>\nWrite each message COMPLETE and word-for-word, specific to ${c.ind}. The ONLY allowed placeholder is the customer's first name written as [Name].\n<div class="script"><span class="slabel">Text 1 - Send This Morning (under 160 characters)</span><p>[Complete text message]</p></div>\n<div class="script"><span class="slabel">Text 2 - Send 4 Hours Later If No Reply (under 160 characters)</span><p>[Complete text message, different angle, ends with an easy yes/no question]</p></div>\n<div class="script"><span class="slabel">Call - End of Day for Anyone Who Has Not Replied (30-second voicemail script)</span><p>[Complete word-for-word voicemail script]</p></div>\n<h4>What This Is Worth</h4>\n<p>Walk the math conservatively: ${qwContacts} contacts x 5-10% reactivation x ~${c.avgLo} average job value = approximately $${qwLo} to $${qwHi} in recovered revenue from a single afternoon. Use "estimated" language. One sentence on why 5-10% is deliberately conservative against the 10-20% reactivation rates re-engagement campaigns typically see.</p>\n<div class="action-box"><h5>Do It Today: 4 Steps, Under 1 Hour of Work</h5><ol><li>[pull the ${qwContacts} most recent unconverted quotes, with time estimate]</li><li>[send Text 1 to all of them, time estimate]</li><li>[send Text 2 at the 4-hour mark to non-responders, time estimate]</li><li>[end-of-day calls to the rest, time estimate]</li></ol></div>\n<div class="disclaimer">Recovery figures are estimates based on a conservative 5-10% reactivation rate applied to your reported quote volume and average job value. Individual results vary.</div>`,
 
