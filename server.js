@@ -534,8 +534,8 @@ body {
   font-family: 'Inter', Helvetica, Arial, sans-serif;
   background: #FFFFFF;
   color: #2B2320;
-  font-size: 14px;
-  line-height: 1.8;
+  font-size: 11px;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
 }
 .wrap { max-width: 820px; margin: 0 auto; padding: 28px 16px; }
@@ -657,30 +657,31 @@ body {
 /* ── REPORT SECTIONS ── */
 .rsec {
   background: white; border: 1px solid #E8E4DE;
-  border-radius: 12px; margin-bottom: 16px; overflow: hidden;
+  border-radius: 12px; margin-bottom: 12px; overflow: hidden;
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .rsec-head {
   background: #FFFFFF;
   border-bottom: 2px solid #E8E4DE;
-  padding: 14px 24px;
+  padding: 8px 16px;
   display: flex; align-items: center; justify-content: space-between;
 }
-.rsec-left { display: flex; align-items: center; gap: 12px; }
+.rsec-left { display: flex; align-items: center; gap: 10px; }
+.rsec-head .sec-num { width: 20px; height: 20px; font-size: 9.5px; border-radius: 5px; }
 .rsec-title {
-  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 14px;
+  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 12px;
   font-weight: 800; color: #2B2320; letter-spacing: 0;
 }
 .rsec-amt {
-  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 14px;
+  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 12px;
   font-weight: 800; color: #C1502E; white-space: nowrap;
 }
-.rsec-body { padding: 24px 28px; background: white; }
+.rsec-body { padding: 14px 18px; background: white; }
  
 /* ── BODY CONTENT ── */
 p {
-  margin-bottom: 14px; color: #4A423C;
-  font-size: 14px; line-height: 1.8;
+  margin-bottom: 9px; color: #4A423C;
+  font-size: 11px; line-height: 1.4;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
 p:last-child { margin-bottom: 0; }
@@ -688,47 +689,47 @@ strong { font-weight: 700; color: #2B2320; }
  
 /* Section subheadings */
 h4 {
-  font-family: 'Inter', Helvetica, Arial, sans-serif; font-size: 15px; font-weight: 700;
-  color: #2B2320; margin: 24px 0 10px;
-  padding-bottom: 8px;
+  font-family: 'Inter', Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 700;
+  color: #2B2320; margin: 14px 0 7px;
+  padding-bottom: 5px;
   border-bottom: 2px solid #E8E4DE;
   display: flex; align-items: center; gap: 8px;
 }
 h4::before {
   content: '';
-  display: inline-block; width: 4px; height: 16px;
+  display: inline-block; width: 4px; height: 12px;
   background: #C1502E; border-radius: 2px; flex-shrink: 0;
 }
 h5 {
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 10px; font-weight: 700;
+  font-size: 9px; font-weight: 700;
   letter-spacing: .14em; text-transform: uppercase;
-  color: #6B7245; margin-bottom: 12px;
+  color: #6B7245; margin-bottom: 8px;
 }
  
 /* Lists */
-ul { margin: 10px 0 16px; padding: 0; list-style: none; }
+ul { margin: 6px 0 10px; padding: 0; list-style: none; }
 ul li {
-  display: flex; gap: 10px; margin-bottom: 8px;
-  font-size: 14px; color: #5A5049; line-height: 1.7;
+  display: flex; gap: 8px; margin-bottom: 5px;
+  font-size: 11px; color: #5A5049; line-height: 1.4;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
 ul li::before { content: '→'; color: #6B7245; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
  
-ol { margin: 10px 0 16px; padding: 0; list-style: none; counter-reset: steps; }
+ol { margin: 6px 0 10px; padding: 0; list-style: none; counter-reset: steps; }
 ol li {
-  display: flex; gap: 14px; margin-bottom: 12px;
-  font-size: 14px; color: #5A5049; line-height: 1.7;
+  display: flex; gap: 10px; margin-bottom: 7px;
+  font-size: 11px; color: #5A5049; line-height: 1.4;
   counter-increment: steps; font-family: 'Inter', Helvetica, Arial, sans-serif;
-  padding: 10px 14px; background: #F7F5F2;
+  padding: 6px 10px; background: #F7F5F2;
   border: 1px solid #E8E4DE; border-radius: 8px;
 }
 ol li::before {
   content: counter(steps);
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 24px; height: 24px; border-radius: 50%;
+  min-width: 18px; height: 18px; border-radius: 50%;
   background: rgba(107,114,69,0.12); color: #6B7245;
-  font-size: 11px; font-weight: 700; flex-shrink: 0;
+  font-size: 9px; font-weight: 700; flex-shrink: 0;
   font-family: 'Inter', Helvetica, Arial, sans-serif; margin-top: 1px;
 }
  
@@ -738,9 +739,9 @@ ol li::before {
   border: 1px solid #fde68a;
   border-left: 5px solid #B07A2A;
   border-radius: 0 10px 10px 0;
-  padding: 14px 18px; margin: 0 0 20px 0;
-  font-size: 13.5px; color: #78350f; font-weight: 600;
-  line-height: 1.6; font-family: 'Inter', Helvetica, Arial, sans-serif;
+  padding: 8px 12px; margin: 0 0 12px 0;
+  font-size: 11px; color: #78350f; font-weight: 600;
+  line-height: 1.45; font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
  
 /* ── SCRIPTS ── */
@@ -748,23 +749,23 @@ ol li::before {
   background: #F7F5F2;
   border: 1px solid #E8E4DE;
   border-radius: 10px;
-  padding: 0; margin: 14px 0; overflow: hidden;
+  padding: 0; margin: 8px 0; overflow: hidden;
 }
 .slabel {
   display: block;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 9.5px; font-weight: 700;
+  font-size: 8.5px; font-weight: 700;
   letter-spacing: .16em; text-transform: uppercase;
   color: #6B7245;
-  padding: 10px 18px;
+  padding: 6px 12px;
   border-bottom: 1px solid #E8E4DE;
   background: #F0EDE8;
 }
 .script p {
   color: #4A423C !important;
-  font-size: 13px;
-  line-height: 1.8; margin: 0;
-  padding: 14px 18px;
+  font-size: 10.5px;
+  line-height: 1.45; margin: 0;
+  padding: 8px 12px;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
 .script strong { color: #2B2320 !important; }
@@ -775,10 +776,10 @@ ol li::before {
   border: 1px solid #E8E4DE;
   border-left: 5px solid #6B7245;
   border-radius: 0 10px 10px 0;
-  padding: 16px 20px; margin: 14px 0;
+  padding: 10px 14px; margin: 8px 0;
 }
 .action-box h5 {
-  color: #6B7245; margin-bottom: 12px;
+  color: #6B7245; margin-bottom: 8px;
 }
  
 /* ── STAT CALLOUT ── */
@@ -787,39 +788,39 @@ ol li::before {
   border: 1px solid rgba(107,114,69,0.2);
   border-left: 5px solid #6B7245;
   border-radius: 0 10px 10px 0;
-  padding: 12px 16px; margin: 14px 0;
-  font-size: 13px; color: #4A5230;
-  font-weight: 600; line-height: 1.65;
+  padding: 8px 12px; margin: 8px 0;
+  font-size: 10.5px; color: #4A5230;
+  font-weight: 600; line-height: 1.45;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
  
 /* ── DISCLAIMER ── */
 .disclaimer {
   background: #F7F5F2; border: 1px solid #E8E4DE;
-  border-radius: 8px; padding: 10px 14px;
-  margin: 12px 0; font-size: 11.5px;
-  color: #9A8C80; line-height: 1.55;
+  border-radius: 8px; padding: 7px 10px;
+  margin: 8px 0; font-size: 9.5px;
+  color: #9A8C80; line-height: 1.45;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
  
 /* ── TABLES ── */
-table { width: 100%; border-collapse: collapse; margin: 14px 0; font-size: 13px; }
+table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10.5px; }
 thead tr { background: #2B2320; }
 th {
   background: #2B2320; color: #FFF8F0;
-  padding: 10px 14px; text-align: left;
+  padding: 6px 10px; text-align: left;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 9.5px; font-weight: 700;
+  font-size: 8.5px; font-weight: 700;
   letter-spacing: .1em; text-transform: uppercase;
 }
 th:first-child { border-radius: 6px 0 0 0; }
 th:last-child { border-radius: 0 6px 0 0; }
 td {
-  padding: 10px 14px;
+  padding: 6px 10px;
   border-bottom: 1px solid #E8E4DE;
   color: #5A5049; vertical-align: top;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 13px;
+  font-size: 10.5px;
 }
 tr:last-child td { border-bottom: none; }
 tr:nth-child(even) td { background: #F7F5F2; }
@@ -830,7 +831,7 @@ tr:hover td { background: #F0EDE8; }
 .pcard {
   background: #F7F5F2;
   border: 1px solid #E8E4DE;
-  border-radius: 10px; padding: 18px 20px; margin-bottom: 12px;
+  border-radius: 10px; padding: 10px 14px; margin-bottom: 8px;
 }
 .ptag {
   font-family: 'Inter', Helvetica, Arial, sans-serif;
@@ -843,12 +844,12 @@ tr:hover td { background: #F0EDE8; }
 }
 .ptitle {
   font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 15px; font-weight: 800;
-  color: #2B2320; margin-bottom: 12px;
+  font-size: 12px; font-weight: 800;
+  color: #2B2320; margin-bottom: 8px;
 }
 .ptask {
-  display: flex; gap: 8px; margin-bottom: 8px;
-  font-size: 13px; color: #5A5049; line-height: 1.6;
+  display: flex; gap: 8px; margin-bottom: 5px;
+  font-size: 10.5px; color: #5A5049; line-height: 1.4;
   align-items: flex-start; font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
 .ptask::before {
@@ -857,9 +858,9 @@ tr:hover td { background: #F0EDE8; }
 }
 .pmile {
   background: #FFFFFF; border: 1px solid #E8E4DE; border-radius: 8px;
-  padding: 10px 14px; margin-top: 12px;
-  font-size: 12px; color: #4A5230;
-  font-weight: 600; line-height: 1.6;
+  padding: 7px 10px; margin-top: 8px;
+  font-size: 10px; color: #4A5230;
+  font-weight: 600; line-height: 1.45;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
   border-left: 4px solid #C1502E;
 }
@@ -881,9 +882,9 @@ tr:hover td { background: #F0EDE8; }
 }
 blockquote {
   background: #F7F5F2; border: 1px solid #E8E4DE; border-radius: 8px;
-  padding: 16px 20px; margin: 14px 0;
-  color: #4A423C; font-size: 13px;
-  line-height: 1.8;
+  padding: 10px 14px; margin: 8px 0;
+  color: #4A423C; font-size: 10.5px;
+  line-height: 1.5;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
   border-left: 4px solid #6B7245;
 }
@@ -937,6 +938,10 @@ h5 {
   break-inside: avoid;
   page-break-inside: avoid;
 }
+blockquote {
+  break-inside: avoid;
+  page-break-inside: avoid;
+}
 .pcard {
   break-inside: avoid;
   page-break-inside: avoid;
@@ -958,11 +963,12 @@ h5 {
   page-break-inside: avoid;
 }
 
-/* Tables don't split when they fit on a page; if longer than a page,
-   rows break cleanly and the header row repeats on each page */
+/* Tables split freely across pages: avoid lives on the smallest unit (tr),
+   never on the whole table, so a long table can never force a mostly-empty
+   page. The header row repeats on each page via table-header-group. */
 table {
-  break-inside: avoid;
-  page-break-inside: avoid;
+  break-inside: auto;
+  page-break-inside: auto;
 }
 thead { display: table-header-group; }
 tr {
@@ -976,6 +982,14 @@ ol li {
 ul li {
   break-inside: avoid;
   page-break-inside: avoid;
+}
+
+/* Large containers must remain splittable: never put break-inside:avoid on
+   multi-card stacks, script sequences, checklists, or section bodies. Only
+   their smallest child units (above) carry avoid. */
+.pgrid, .rsec-body, ol, ul {
+  break-inside: auto;
+  page-break-inside: auto;
 }
 
 /* Headings never orphan at the bottom of a page */
@@ -1274,11 +1288,21 @@ async function sendEmail({ to, firstName, bizName, calcData, pdfBase64 }) {
   return data;
 }
  
+// Hard style rule: no em/en dashes in model output. Spaced dashes become
+// commas; any leftover dash chars become hyphens. Applied at the single
+// choke point where model output is parsed into sections (parseSecs), so
+// it never touches code, comments, or URLs elsewhere in the codebase.
+function scrubDashes(html) {
+  return html
+    .replace(/\s+[—–]\s+/g, ', ')
+    .replace(/[—–]/g, '-');
+}
+
 function parseSecs(txt) {
   const out = {};
   const re = /\[([A-Z_]+)\]([\s\S]*?)(?=\[[A-Z_]+\]|$)/g;
   let m;
-  while ((m = re.exec(txt)) !== null) if (m[2].trim()) out[m[1]] = m[2].trim();
+  while ((m = re.exec(txt)) !== null) if (m[2].trim()) out[m[1]] = scrubDashes(m[2].trim());
   return out;
 }
  
@@ -1372,7 +1396,8 @@ RULES — NON-NEGOTIABLE:
 20. This business is located in ${c.city}, which is in the United States. Use ONLY US-specific platforms, directories, regulations, and market data. Never reference Australian platforms (HiPages, Oneflare, ServiceSeeking, Hipages), Australian regulators (WorkSafe, Fair Work), or Australian statistics.
 21. HTML only: <p>, <strong>, <h4>, <ul><li>, <ol><li>, <table>, <div class="stat-call">, <div class="script"><span class="slabel">...</span><p>...</p></div>, <div class="action-box"><h5>...</h5><ol>...</ol></div>, <div class="quick-win">
 22. WORD BUDGET: Respect the stated word maximum for each section. Shorter is better. No filler, no restating other sections. Scripts and table cells do not count toward the word maximum; all prose does.
-23. NO DISCLAIMERS: Do not write disclaimer text or <div class="disclaimer"> blocks. The report appends one consolidated disclaimer block at the end.`;
+23. NO DISCLAIMERS: Do not write disclaimer text or <div class="disclaimer"> blocks. The report appends one consolidated disclaimer block at the end.
+24. NEVER use em dashes or en dashes anywhere in the output. Use commas, periods, or parentheses instead.`;
 }
  
 function buildSectionPrompt(key, c) {
