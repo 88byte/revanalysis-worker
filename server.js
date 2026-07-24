@@ -1814,6 +1814,126 @@ app.post('/cron/trial-ending', async (req, res) => {
 });
 
 
+// ══════════════════════════════════════════════════
+//  15-MINUTE RECOVERY EMAIL (resume-to-buy)
+//  Every 2 min, sweep the leads DB for unpaid, un-emailed quiz
+//  submissions aged 15 min to 24 h, send one short branded nudge
+//  with a resume link, then mark followup_sent so nobody is emailed twice.
+// ══════════════════════════════════════════════════
+const LEADS_URL_R = process.env.LEADS_SUPABASE_URL;
+const LEADS_KEY_R = process.env.LEADS_SUPABASE_SECRET_KEY;
+const APP_BASE_URL = process.env.APP_BASE_URL || 'https://www.revanalysis.com';
+let _recoveryEnvWarned = false;
+
+async function sendRecoveryEmail({ to, subject, html }) {
+  if (!RESEND_API_KEY) {
+    console.warn('RESEND_API_KEY missing, skipping recovery email to', to);
+    return false;
+  }
+  const r = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: 'RevAnalysis <reports@revanalysis.com>', to: [to], subject, html }),
+  });
+  if (!r.ok) {
+    const t = await r.text().catch(() => '');
+    console.warn(`Recovery send failed for ${to}: ${r.status} ${t.slice(0, 200)}`);
+    return false;
+  }
+  return true;
+}
+
+function recoveryEmailHtml(firstName, monthlyLeak, resumeUrl) {
+  const greetName = firstName ? `, ${firstName}` : '';
+  const bigNumber = monthlyLeak ? `~$${monthlyLeak.toLocaleString()}/mo` : 'your revenue leak';
+  return `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#FAF6EF;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#FAF6EF;padding:28px 12px;">
+<tr><td align="center">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#FFFFFF;border:1px solid #E8E4DE;border-radius:14px;">
+<tr><td style="padding:36px 36px 28px 36px;">
+<div style="font-family:'Poppins',Helvetica,Arial,sans-serif;font-size:20px;font-weight:800;color:#2B2320;letter-spacing:-0.3px;">RevAnalysis</div>
+<div style="height:3px;width:46px;background:#C1502E;border-radius:2px;margin:10px 0 24px 0;"></div>
+<p style="margin:0 0 18px 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:15px;line-height:1.6;color:#2B2320;">You took the quiz${greetName}. You saw the number. You did not grab the full breakdown yet.</p>
+<div style="font-family:'Poppins',Helvetica,Arial,sans-serif;font-size:38px;font-weight:800;color:#C1502E;line-height:1.1;margin:6px 0 8px 0;">${bigNumber}</div>
+<p style="margin:0 0 22px 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#4A423C;">The $9 audit prices all 9 leaks, shows the math, and gives you the exact fix order.</p>
+<table role="presentation" cellpadding="0" cellspacing="0"><tr><td style="border-radius:999px;background:#C1502E;">
+<a href="${resumeUrl}" style="display:inline-block;padding:14px 30px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:15px;font-weight:700;color:#FFF8F0;text-decoration:none;border-radius:999px;">Get my full audit for $9</a>
+</td></tr></table>
+<p style="margin:20px 0 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;line-height:1.6;color:#6E6259;">Takes 30 seconds. Your answers are saved.</p>
+<p style="margin:26px 0 0 0;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#2B2320;">Flavio DeOliveira, RevAnalysis</p>
+</td></tr>
+<tr><td style="padding:0 36px 30px 36px;font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;line-height:1.5;color:#9A8C80;">Not interested? Reply with STOP and I will not email again.</td></tr>
+</table>
+</td></tr></table>
+</body></html>`;
+}
+
+async function runRecoverySweep() {
+  try {
+    if (!LEADS_URL_R || !LEADS_KEY_R) {
+      if (!_recoveryEnvWarned) {
+        console.warn('Recovery: LEADS_SUPABASE_URL / LEADS_SUPABASE_SECRET_KEY not set, recovery loop is a no-op');
+        _recoveryEnvWarned = true;
+      }
+      return;
+    }
+    const now = Date.now();
+    const cutoffNew = new Date(now - 15 * 60 * 1000).toISOString();      // aged >= 15 min
+    const cutoffOld = new Date(now - 24 * 60 * 60 * 1000).toISOString(); // and <= 24 h old
+    const query =
+      `quiz_submissions?paid=eq.false&followup_sent=eq.false` +
+      `&created_at=lte.${cutoffNew}&created_at=gte.${cutoffOld}` +
+      `&select=id,email,name,leak_estimate,resume_payload&order=created_at.asc&limit=50`;
+    const r = await fetch(`${LEADS_URL_R}/rest/v1/${query}`, {
+      headers: { apikey: LEADS_KEY_R, Authorization: `Bearer ${LEADS_KEY_R}` },
+    });
+    if (!r.ok) {
+      console.warn('Recovery: leads query failed', r.status, (await r.text().catch(() => '')).slice(0, 160));
+      return;
+    }
+    const rows = await r.json();
+    if (!Array.isArray(rows) || rows.length === 0) return;
+    for (const row of rows) {
+      try {
+        if (!row.email) continue;
+        const total = (row.leak_estimate && row.leak_estimate.total) || 0;
+        const monthly = total ? moRound(total) : 0;
+        const firstName =
+          (row.resume_payload && row.resume_payload.firstName) ||
+          (row.name ? String(row.name).trim().split(/\s+/)[0] : '') || '';
+        const subject = monthly
+          ? `You left about $${monthly.toLocaleString()}/mo on the table`
+          : 'Your revenue leak audit is one click away';
+        const resumeUrl = `${APP_BASE_URL}/quiz?resume=${row.id}`;
+        const html = recoveryEmailHtml(firstName, monthly, resumeUrl);
+        const ok = await sendRecoveryEmail({ to: row.email, subject, html });
+        if (ok) {
+          await fetch(`${LEADS_URL_R}/rest/v1/quiz_submissions?id=eq.${row.id}`, {
+            method: 'PATCH',
+            headers: {
+              apikey: LEADS_KEY_R,
+              Authorization: `Bearer ${LEADS_KEY_R}`,
+              'Content-Type': 'application/json',
+              Prefer: 'return=minimal',
+            },
+            body: JSON.stringify({ followup_sent: true, followup_sent_at: new Date().toISOString() }),
+          }).catch(e => console.warn('Recovery: mark followup_sent failed for', row.email, e.message));
+          console.log(`Recovery: sent to ${row.email}`);
+        }
+      } catch (inner) {
+        console.warn('Recovery: row error', inner && inner.message);
+      }
+    }
+  } catch (e) {
+    console.warn('Recovery sweep error:', e && e.message);
+  }
+}
+
+// Register the recovery sweep once at startup. Guarded so it never throws out of the interval.
+setInterval(() => { runRecoverySweep(); }, 2 * 60 * 1000);
+
+
 app.listen(PORT, async () => {
   console.log(`RevAnalysis worker running on port ${PORT}`);
 
