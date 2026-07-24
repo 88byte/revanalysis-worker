@@ -1130,6 +1130,7 @@ p { orphans: 3; widows: 3; }
         <li><strong>Operations & CX:</strong> scheduling, job costing, collections, and the SOPs that let the business run without you.</li>
       </ul>
       <p>Book directly at <strong><a href="https://calendly.com/flaviod022/discovery-call-flavio-deoliveira" style="color:#C1502E;">https://calendly.com/flaviod022/discovery-call-flavio-deoliveira</a></strong> or email <strong><a href="mailto:flaviod022@gmail.com" style="color:#C1502E;">flaviod022@gmail.com</a></strong> with the subject line "Audit walkthrough" and your business name. Replies within one business day.</p>
+      <p>Know another owner leaking money like this? Forward them the quiz: <strong><a href="https://revanalysis.com" style="color:#C1502E;">revanalysis.com</a></strong>. It is free to find out.</p>
     </div>
   </div>`;
 
