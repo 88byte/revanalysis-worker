@@ -8,7 +8,53 @@ app.use(express.json({ limit: '10mb' }));
 const queue = [];
 let isProcessing = false;
 const jobStore = {};
- 
+
+// ══════════════════════════════════════════════════
+//  DURABLE REPORT STORAGE
+//  Persist every generated PDF to the private "reports"
+//  bucket in the LEADS Supabase project so past reports
+//  survive worker restarts (in-memory jobStore is volatile).
+// ══════════════════════════════════════════════════
+function sanitizeEmail(email) {
+  return String(email || '').toLowerCase().replace(/[^a-z0-9]/g, '_');
+}
+
+async function uploadReportToStorage(email, pdfBase64) {
+  const url = process.env.LEADS_SUPABASE_URL;
+  const key = process.env.LEADS_SUPABASE_SECRET_KEY;
+  if (!url || !key) {
+    console.warn('Storage: LEADS_SUPABASE_URL / LEADS_SUPABASE_SECRET_KEY not set, report storage is a no-op');
+    return false;
+  }
+  if (!pdfBase64) {
+    console.warn(`Storage: no PDF bytes to store for ${email}`);
+    return false;
+  }
+  try {
+    const objectPath = `reports/${sanitizeEmail(email)}.pdf`;
+    const r = await fetch(`${url}/storage/v1/object/${objectPath}`, {
+      method: 'POST',
+      headers: {
+        'apikey': key,
+        'Authorization': `Bearer ${key}`,
+        'Content-Type': 'application/pdf',
+        'x-upsert': 'true',
+      },
+      body: Buffer.from(pdfBase64, 'base64'),
+    });
+    if (!r.ok) {
+      const t = await r.text().catch(() => '');
+      console.warn(`Storage: report upload failed for ${email}: ${r.status} ${t.slice(0, 200)}`);
+      return false;
+    }
+    console.log(`Report stored: ${email}`);
+    return true;
+  } catch (e) {
+    console.warn(`Storage: report upload error for ${email}: ${e.message}`);
+    return false;
+  }
+}
+
 function enqueue(job) {
   queue.push(job);
   console.log(`Job queued for ${job.email}. Queue length: ${queue.length}`);
@@ -116,6 +162,8 @@ app.post('/resend', async (req, res) => {
       }
     }
 
+    uploadReportToStorage(email, pdfBase64).catch(e => console.warn(`Storage upload error for ${email}:`, e.message));
+
     sendEmail({
       to: email, firstName: job.firstName||'', bizName: job.bizName,
       calcData: job.calcData,
@@ -154,22 +202,47 @@ app.get('/jobs', (req, res) => {
   res.json({ count: jobs.length, jobs });
 });
 
-// QA: fetch a completed report directly. PDF if cached, else HTML, else 404.
-app.get('/admin/report', (req, res) => {
+// Admin: download a customer's report PDF. Serves the in-memory copy first,
+// then falls back to durable Supabase Storage so past reports survive restarts.
+app.get('/admin/report', async (req, res) => {
   const { email, adminKey } = req.query;
   if (adminKey !== process.env.ADMIN_KEY) return res.status(401).json({ error: 'Unauthorized' });
-  const job = email ? jobStore[email] : null;
-  if (!job || (!job.completedPdf && !job.completedHtml)) {
-    return res.status(404).json({ error: `No completed report in memory for ${email || '(missing email param)'}` });
-  }
-  if (job.completedPdf) {
+  if (!email) return res.status(400).json({ error: 'Missing email param' });
+
+  const sanitized = sanitizeEmail(email);
+  const datePart = new Date().toISOString().slice(0, 10);
+  const filename = `revanalysis-report-${sanitized}-${datePart}.pdf`;
+
+  // (a) In-memory copy, if the worker still has it
+  const job = jobStore[email];
+  if (job && job.completedPdf) {
     const buf = Buffer.from(job.completedPdf, 'base64');
     res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="RevAnalysis-Report-${String(email).replace(/[^a-zA-Z0-9@._-]/g, '')}.pdf"`);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
     return res.send(buf);
   }
-  res.setHeader('Content-Type', 'text/html; charset=utf-8');
-  return res.send(job.completedHtml);
+
+  // (b) Durable Supabase Storage (private "reports" bucket)
+  const url = process.env.LEADS_SUPABASE_URL;
+  const key = process.env.LEADS_SUPABASE_SECRET_KEY;
+  if (url && key) {
+    try {
+      const r = await fetch(`${url}/storage/v1/object/reports/${sanitized}.pdf`, {
+        headers: { 'apikey': key, 'Authorization': `Bearer ${key}` },
+      });
+      if (r.ok) {
+        const arrayBuf = await r.arrayBuffer();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.send(Buffer.from(arrayBuf));
+      }
+    } catch (e) {
+      console.warn(`Storage: report fetch error for ${email}: ${e.message}`);
+    }
+  }
+
+  // (c) Never generated yet
+  return res.status(404).json({ error: `Report for ${email} has not been generated yet. Use Resend first, then download in a minute.` });
 });
 
 app.post('/generate', (req, res) => {
@@ -417,6 +490,7 @@ async function generateAndSend({ email, firstName, lastName, title, bizName, ind
   jobStore[email].completedHtml = reportHtml;
   jobStore[email].completedPdf = pdfBase64;
   jobStore[email].completedAt = new Date().toISOString();
+  await uploadReportToStorage(email, pdfBase64);
   console.log(`Report delivered to ${email}`);
   updateSupabaseDelivered(email);
 }
