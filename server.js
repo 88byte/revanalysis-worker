@@ -1186,11 +1186,17 @@ p { orphans: 3; widows: 3; }
    The dashboard (kpi strip + benchmarks + charts) fills the page after the
    cover, so the first section starting on its own page leaves no gap. */
 .rsec {
-  break-before: page;
-  page-break-before: always;
+  /* Sections FLOW and pack to fill pages. Atomic blocks (cards, math-box,
+     tables, fix lists, scripts) keep break-inside:avoid so nothing splits
+     mid-block, and section headers avoid orphaning at a page bottom. This
+     removes the half-empty pages caused by forcing every section onto a
+     fresh sheet. */
   break-inside: auto;
   page-break-inside: auto;
+  margin-top: 26px;
 }
+.rsec:first-of-type { margin-top: 0; }
+.rsec-head, .rsec-title { break-after: avoid-page; page-break-after: avoid; }
 
 /* ── PRINT OVERRIDES ── */
 @media print {
