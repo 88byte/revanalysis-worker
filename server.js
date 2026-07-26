@@ -1272,13 +1272,40 @@ p { orphans: 3; widows: 3; }
     sectionCharts.RET = `<div class="cap">Repeat rate vs benchmark</div>${svgVsBench(retPct, bench.retention, { unit: '%' })}`;
   }
 
+  // Hormozi-style teaching illustrations, one per section, hosted in the LEADS
+  // Supabase public "report-art" bucket. Each is injected right after the
+  // section's chart / THE MATH box so the concept lands after the numbers.
+  const ART_BASE = 'https://vpkiqqvuyqknrdgonabo.supabase.co/storage/v1/object/public/report-art/';
+  const sectionArt = {
+    CONV: 'close-rate.png', SPEED: 'speed-to-lead.png', DEAD: 'dead-lead.png',
+    PRICE: 'pricing-margin.png', RET: 'retention-referrals.png', OPS: 'capacity-scheduling.png',
+    CASH: 'cash-collection.png', LEVERAGE: 'owner-leverage.png', AI: 'ai-leverage.png'
+  };
+  const artAlt = {
+    CONV: 'Ten quotes in, five closed — the rest leak out the side of the funnel',
+    SPEED: 'Speed equals money: the faster you call a fresh lead, the more you close',
+    DEAD: 'Old quotes are not dead — the money in them is still recoverable',
+    PRICE: 'Raise price while cost holds flat and the profit gap widens over time',
+    RET: 'One happy customer becomes many through repeat work and referrals',
+    OPS: 'Gaps in the schedule and wrong-way routing quietly bleed billable hours',
+    CASH: 'Get paid faster: the longer money sits uncollected, the less it is worth',
+    LEVERAGE: 'When every task routes through you, you are the bottleneck',
+    AI: 'You plus AI compounds over time while you working alone stays flat'
+  };
+  const artHtml = (k) => sectionArt[k]
+    ? `<figure style="break-inside:avoid;margin:22px 0 8px;text-align:center;">`
+      + `<img src="${ART_BASE}${sectionArt[k]}" alt="${artAlt[k]||''}" `
+      + `style="width:100%;max-width:520px;height:auto;display:block;margin:0 auto;"/></figure>`
+    : '';
+
   // Sections — start numbering at 01 (00 is the dashboard)
   let sectionsHtml = '';
   sectionKeys.forEach((k, i) => {
     if (!sections[k]) return;
     const catKey = catKeyMap[k];
     const catMatch = catKey ? L.cats.find(c => c.n.toLowerCase().includes(catKey.toLowerCase())) : null;
-    let bodyHtml = sectionCharts[k] ? injectAfterMathBox(sections[k], sectionCharts[k]) : sections[k];
+    const inj = k === 'AI' ? '' : ((sectionCharts[k] || '') + artHtml(k));
+    let bodyHtml = inj ? injectAfterMathBox(sections[k], inj) : sections[k];
     // AI Leverage gets a distinct treatment — ONE reverse band opener + adoption
     // ladder in the whole report. This visual emphasis lives only in the AI section.
     if (k === 'AI') {
@@ -1288,7 +1315,7 @@ p { orphans: 3; widows: 3; }
         <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:16px;line-height:1.5;color:#E8E0D5;margin:0;">This is the one move that keeps paying you back. Set it up once and it can compound for the next 12 months, while every other fix in this report keeps running without you touching it.</div>
       </div>`;
       const aiLadder = `<div style="break-inside:avoid;margin:0 0 20px;"><div class="cap">Your AI adoption ladder</div>${svgAdoptionLadder(aiLevel)}</div>`;
-      bodyHtml = aiBand + aiLadder + bodyHtml;
+      bodyHtml = aiBand + aiLadder + artHtml('AI') + bodyHtml;
     }
     sectionsHtml += `<div class="rsec">
       <div class="rsec-head">
