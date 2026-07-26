@@ -79,7 +79,8 @@ async function processNext() {
 // ══════════════════════════════════════════════════
 //  ROUTES
 // ══════════════════════════════════════════════════
-app.get('/', (req, res) => res.json({ status: 'RevAnalysis worker running', queueLength: queue.length, isProcessing }));
+const BUILD_MARKER = 'art-illustrations-2026-07-26';
+app.get('/', (req, res) => res.json({ status: 'RevAnalysis worker running', build: BUILD_MARKER, queueLength: queue.length, isProcessing }));
 app.get('/status', (req, res) => res.json({ queueLength: queue.length, isProcessing, jobs: queue.map(j => ({ email: j.email, bizName: j.bizName })) }));
  
 app.post('/resend', async (req, res) => {
