@@ -503,16 +503,68 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 function svgBarChart(cats) {
   const maxAmt = Math.max(...cats.map(c => c.amt), 1);
   const COLORS = { h:'#C1502E', m:'#B07A2A', l:'#6B7245' };
-  const rowH=44, labelW=190, barZone=340, height=cats.length*rowH+40, width=620;
+  const rowH=54, labelW=210, barZone=340, height=cats.length*rowH+40, width=640;
   const rows = cats.map((cat, i) => {
-    const barW = Math.max(4, Math.round((cat.amt/maxAmt)*barZone));
+    const barW = Math.max(6, Math.round((cat.amt/maxAmt)*barZone));
     const y = 20+i*rowH, color = COLORS[cat.sev]||'#6B7245';
     const label = cat.n.length>28 ? cat.n.substring(0,27)+'…' : cat.n;
-    return `<text x="${labelW-8}" y="${y+16}" font-family="Arial,sans-serif" font-size="11.5" fill="#4A423C" text-anchor="end" dominant-baseline="middle">${label}</text>
-      <rect x="${labelW}" y="${y+4}" width="${barW}" height="22" rx="4" fill="${color}" opacity="0.82"/>
-      <text x="${labelW+barW+7}" y="${y+16}" font-family="Arial,sans-serif" font-size="11" font-weight="bold" fill="${color}" dominant-baseline="middle">~$${cat.amt.toLocaleString()}/mo</text>`;
+    return `<text x="${labelW-10}" y="${y+19}" font-family="Arial,sans-serif" font-size="14" fill="#4A423C" text-anchor="end" dominant-baseline="middle">${label}</text>
+      <rect x="${labelW}" y="${y+5}" width="${barW}" height="28" rx="5" fill="${color}"/>
+      <text x="${labelW+barW+9}" y="${y+19}" font-family="Arial,sans-serif" font-size="13.5" font-weight="bold" fill="${color}" dominant-baseline="middle">~$${cat.amt.toLocaleString()}/mo</text>`;
   }).join('');
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${width}" height="${height}" rx="4" fill="#F7F5F2"/>${rows}</svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${width}" height="${height}" rx="6" fill="#F7F5F2"/>${rows}</svg>`;
+}
+
+// You-vs-benchmark horizontal 2-bar mini chart. Terracotta = you, olive = benchmark.
+// Values labeled at the bar ends. Only rendered when a section has a clean numeric pair.
+function svgVsBench(youVal, benchVal, opts) {
+  opts = opts || {};
+  const unit = opts.unit || '';
+  const youLabel = opts.youLabel || 'You';
+  const benchLabel = opts.benchLabel || 'Benchmark';
+  const maxV = Math.max(youVal, benchVal, 1);
+  const W=560, labelW=130, barZone=300, rowH=54, padT=16, H=padT+2*rowH+6;
+  const bar=(y,val,color,name)=>{
+    const w=Math.max(6, Math.round((val/maxV)*barZone));
+    return `<text x="${labelW-12}" y="${y+24}" font-family="Arial,sans-serif" font-size="14" fill="#4A423C" text-anchor="end" dominant-baseline="middle">${name}</text>
+    <rect x="${labelW}" y="${y+8}" width="${w}" height="30" rx="5" fill="${color}"/>
+    <text x="${labelW+w+12}" y="${y+24}" font-family="Arial,sans-serif" font-size="15" font-weight="bold" fill="${color}" dominant-baseline="middle">${val}${unit}</text>`;
+  };
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${W}" height="${H}" rx="6" fill="#F7F5F2"/>${bar(padT, youVal, '#C1502E', youLabel)}${bar(padT+rowH, benchVal, '#6B7245', benchLabel)}</svg>`;
+}
+
+// Simple lead drop-off funnel: leads in -> lost -> closed. Counts, from their real numbers.
+function svgFunnel(leadsIn, closed) {
+  const lost = Math.max(0, leadsIn - closed);
+  const rows=[
+    {name:'Leads in / mo', val:leadsIn, color:'#2B2320'},
+    {name:'Lost',          val:lost,    color:'#C1502E'},
+    {name:'Closed',        val:closed,  color:'#6B7245'},
+  ];
+  const maxV=Math.max(leadsIn,1);
+  const W=560, labelW=130, barZone=300, rowH=50, padT=16, H=padT+rows.length*rowH+6;
+  const body=rows.map((r,i)=>{
+    const y=padT+i*rowH, w=Math.max(6, Math.round((r.val/maxV)*barZone));
+    return `<text x="${labelW-12}" y="${y+22}" font-family="Arial,sans-serif" font-size="14" fill="#4A423C" text-anchor="end" dominant-baseline="middle">${r.name}</text>
+    <rect x="${labelW}" y="${y+7}" width="${w}" height="28" rx="5" fill="${r.color}"/>
+    <text x="${labelW+w+12}" y="${y+22}" font-family="Arial,sans-serif" font-size="15" font-weight="bold" fill="${r.color}" dominant-baseline="middle">${r.val}</text>`;
+  }).join('');
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${W}" height="${H}" rx="6" fill="#F7F5F2"/>${body}</svg>`;
+}
+
+// Abstract, clean "leak" motif for the dashboard: a container losing money through a hole.
+function svgLeakMotif(totalMo) {
+  const W=560, H=150;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${W}" height="${H}" rx="6" fill="#F7F5F2"/>
+  <path d="M72 42 L200 42 L188 118 L84 118 Z" fill="none" stroke="#2B2320" stroke-width="3" stroke-linejoin="round"/>
+  <text x="136" y="92" font-family="Arial,sans-serif" font-size="22" font-weight="bold" fill="#6B7245" text-anchor="middle">$</text>
+  <circle cx="188" cy="94" r="6" fill="#C1502E"/>
+  <circle cx="214" cy="100" r="6" fill="#C1502E"/>
+  <circle cx="244" cy="112" r="5" fill="#C1502E" opacity="0.75"/>
+  <circle cx="274" cy="126" r="4" fill="#C1502E" opacity="0.5"/>
+  <text x="330" y="86" font-family="Arial,sans-serif" font-size="15" fill="#4A423C">Leaking about</text>
+  <text x="330" y="114" font-family="Arial,sans-serif" font-size="24" font-weight="bold" fill="#C1502E">~$${totalMo.toLocaleString()}/mo</text>
+  </svg>`;
 }
  
 function svgLineChart(total) {
@@ -527,15 +579,15 @@ function svgLineChart(total) {
   const toX=i=>padL+(i/3)*chartW, toY=v=>padT+chartH-(v/maxVal)*chartH;
   const grids=[0,0.25,0.5,0.75,1].map(f=>{
     const y=toY(f*maxVal),v=Math.round(f*maxVal),vl=v>=1000?'$'+(v/1000).toFixed(0)+'k':'$'+v;
-    return `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/><text x="${padL-6}" y="${y+4}" font-family="Arial,sans-serif" font-size="9.5" fill="#9ca3af" text-anchor="end">${vl}</text>`;
+    return `<line x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}" stroke="#e5e7eb" stroke-width="1"/><text x="${padL-6}" y="${y+4}" font-family="Arial,sans-serif" font-size="11" fill="#9ca3af" text-anchor="end">${vl}</text>`;
   }).join('');
-  const xLabels=['Start','Month 1','Month 2','Month 3'].map((l,i)=>`<text x="${toX(i)}" y="${H-padB+18}" font-family="Arial,sans-serif" font-size="10.5" fill="#6b7280" text-anchor="middle">${l}</text>`).join('');
+  const xLabels=['Start','Month 1','Month 2','Month 3'].map((l,i)=>`<text x="${toX(i)}" y="${H-padB+18}" font-family="Arial,sans-serif" font-size="12" fill="#6b7280" text-anchor="middle">${l}</text>`).join('');
   const lines=datasets.map(ds=>{
     const pts=ds.values.map((v,i)=>`${toX(i)},${toY(v)}`).join(' ');
     const dots=ds.values.map((v,i)=>`<circle cx="${toX(i)}" cy="${toY(v)}" r="4" fill="${ds.color}" stroke="white" stroke-width="1.5"/>`).join('');
     return `<polyline points="${pts}" fill="none" stroke="${ds.color}" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round" opacity="0.9"/>${dots}`;
   }).join('');
-  const legend=datasets.map((ds,i)=>{const lx=padL+i*175;return `<rect x="${lx}" y="${H-20}" width="12" height="3" rx="2" fill="${ds.color}"/><text x="${lx+17}" y="${H-12}" font-family="Arial,sans-serif" font-size="10" fill="#4b5563">${ds.label}</text>`;}).join('');
+  const legend=datasets.map((ds,i)=>{const lx=padL+i*175;return `<rect x="${lx}" y="${H-20}" width="12" height="3" rx="2" fill="${ds.color}"/><text x="${lx+17}" y="${H-11}" font-family="Arial,sans-serif" font-size="11.5" fill="#4b5563">${ds.label}</text>`;}).join('');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${W}" height="${H}" rx="4" fill="#F7F5F2"/>${grids}<line x1="${padL}" y1="${padT+chartH}" x2="${W-padR}" y2="${padT+chartH}" stroke="#D9D4CC" stroke-width="1.5"/>${xLabels}${lines}${legend}</svg>`;
 }
  
@@ -546,18 +598,18 @@ function svgScoreChart(sc) {
     {label:'Cash flow',score:sc.cashflow,bench:60},{label:'Operations',score:sc.operations,bench:65},
     {label:'Owner leverage',score:sc.leverage,bench:55},
   ].filter(c => typeof c.score === 'number' && !isNaN(c.score));
-  const W=580,rowH=34,padL=90,padR=20,padT=16,barW=W-padL-padR,H=padT+cats.length*rowH+28;
+  const W=580,rowH=40,padL=118,padR=24,padT=16,barW=W-padL-padR,H=padT+cats.length*rowH+30;
   const rows=cats.map((cat,i)=>{
     const y=padT+i*rowH,yourW=Math.round((cat.score/100)*barW),benchX=padL+Math.round((cat.bench/100)*barW);
     const color=cat.score>=cat.bench?'#6B7245':cat.score>=cat.bench*0.7?'#B07A2A':'#C1502E';
-    return `<text x="${padL-8}" y="${y+14}" font-family="Arial,sans-serif" font-size="11" fill="#4A423C" text-anchor="end">${cat.label}</text>
-      <rect x="${padL}" y="${y+4}" width="${barW}" height="16" rx="3" fill="#E8E4DE"/>
-      <rect x="${padL}" y="${y+4}" width="${yourW}" height="16" rx="3" fill="${color}" opacity="0.8"/>
-      <line x1="${benchX}" y1="${y}" x2="${benchX}" y2="${y+24}" stroke="#9A8C80" stroke-width="1.5" stroke-dasharray="3,2"/>
-      <text x="${padL+yourW+5}" y="${y+15}" font-family="Arial,sans-serif" font-size="10" fill="${color}" font-weight="bold">${cat.score}</text>`;
+    return `<text x="${padL-10}" y="${y+17}" font-family="Arial,sans-serif" font-size="13" fill="#4A423C" text-anchor="end">${cat.label}</text>
+      <rect x="${padL}" y="${y+4}" width="${barW}" height="20" rx="4" fill="#E8E4DE"/>
+      <rect x="${padL}" y="${y+4}" width="${yourW}" height="20" rx="4" fill="${color}"/>
+      <line x1="${benchX}" y1="${y}" x2="${benchX}" y2="${y+28}" stroke="#9A8C80" stroke-width="1.5" stroke-dasharray="3,2"/>
+      <text x="${padL+yourW+6}" y="${y+19}" font-family="Arial,sans-serif" font-size="12.5" fill="${color}" font-weight="bold">${cat.score}</text>`;
   }).join('');
   const benchLegendX=padL+Math.round(0.60*barW);
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${W}" height="${H}" rx="4" fill="#F7F5F2"/>${rows}<text x="${benchLegendX}" y="${H-8}" font-family="Arial,sans-serif" font-size="9.5" fill="#6E6259" text-anchor="middle">--- Industry benchmark</text></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}" style="display:block;max-width:100%;margin:0 auto;"><rect width="${W}" height="${H}" rx="6" fill="#F7F5F2"/>${rows}<text x="${benchLegendX}" y="${H-9}" font-family="Arial,sans-serif" font-size="11" fill="#6E6259" text-anchor="middle">- - - Industry benchmark</text></svg>`;
 }
  
 // ══════════════════════════════════════════════════
@@ -609,8 +661,8 @@ body {
   font-family: 'Inter', Helvetica, Arial, sans-serif;
   background: #FFFFFF;
   color: #2B2320;
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 15.5px;
+  line-height: 1.55;
   -webkit-font-smoothing: antialiased;
 }
 .wrap { max-width: 820px; margin: 0 auto; padding: 28px 16px; }
@@ -650,7 +702,7 @@ body {
 }
 .kpi-lbl {
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 9.5px; color: #9A8C80;
+  font-size: 12px; color: #9A8C80;
   text-transform: uppercase; letter-spacing: .1em;
   font-weight: 600;
 }
@@ -664,7 +716,7 @@ body {
 }
 .bench-head {
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 10px; font-weight: 700;
+  font-size: 12px; font-weight: 700;
   letter-spacing: .12em; text-transform: uppercase;
   color: #6E6259; margin-bottom: 14px;
   padding-bottom: 10px;
@@ -678,16 +730,16 @@ body {
 }
 .bm-lbl {
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 9px; color: #9A8C80;
+  font-size: 12px; color: #9A8C80;
   text-transform: uppercase; letter-spacing: .08em;
   margin-bottom: 8px; font-weight: 600;
 }
-.bm-you { font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 20px; font-weight: 800; line-height: 1; }
-.bm-vs { font-family: 'Inter', Helvetica, Arial, sans-serif; font-size: 9px; color: #9A8C80; margin: 5px 0 3px; }
-.bm-bench-val { font-family: 'Inter', Helvetica, Arial, sans-serif; font-size: 11px; color: #6E6259; margin-bottom: 6px; }
+.bm-you { font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 22px; font-weight: 800; line-height: 1; }
+.bm-vs { font-family: 'Inter', Helvetica, Arial, sans-serif; font-size: 12px; color: #9A8C80; margin: 5px 0 3px; }
+.bm-bench-val { font-family: 'Inter', Helvetica, Arial, sans-serif; font-size: 13px; color: #6E6259; margin-bottom: 6px; }
 .bm-tag {
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 9px; font-weight: 700;
+  font-size: 12px; font-weight: 700;
   padding: 3px 8px; border-radius: 20px;
   display: inline-block; letter-spacing: .04em;
 }
@@ -707,19 +759,19 @@ body {
   display: inline-flex; align-items: center; justify-content: center;
   width: 28px; height: 28px;
   background: rgba(193,80,46,0.10);
-  color: #C1502E; font-size: 11px; font-weight: 700;
+  color: #C1502E; font-size: 12px; font-weight: 700;
   border-radius: 6px; flex-shrink: 0;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
   letter-spacing: .04em;
 }
 .sec-title-h {
-  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 14px;
+  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 15.5px;
   font-weight: 800; color: #2B2320;
 }
 .chart-body { padding: 20px 22px; }
 .chart-label {
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 9.5px; font-weight: 700;
+  font-size: 12px; font-weight: 700;
   letter-spacing: .12em; text-transform: uppercase;
   color: #9A8C80; margin-bottom: 12px;
 }
@@ -732,7 +784,7 @@ body {
 /* ── REPORT SECTIONS ── */
 .rsec {
   background: white; border: 1px solid #E8E4DE;
-  border-radius: 12px; margin-bottom: 12px; overflow: hidden;
+  border-radius: 12px; margin-bottom: 16px; overflow: hidden;
   box-shadow: 0 1px 4px rgba(0,0,0,0.05);
 }
 .rsec-head {
@@ -742,21 +794,21 @@ body {
   display: flex; align-items: center; justify-content: space-between;
 }
 .rsec-left { display: flex; align-items: center; gap: 10px; }
-.rsec-head .sec-num { width: 20px; height: 20px; font-size: 9.5px; border-radius: 5px; }
+.rsec-head .sec-num { width: 24px; height: 24px; font-size: 12px; border-radius: 5px; }
 .rsec-title {
-  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 12px;
+  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 15px;
   font-weight: 800; color: #2B2320; letter-spacing: 0;
 }
 .rsec-amt {
-  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 12px;
+  font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif; font-size: 15px;
   font-weight: 800; color: #C1502E; white-space: nowrap;
 }
-.rsec-body { padding: 14px 18px; background: white; }
+.rsec-body { padding: 20px 22px; background: white; }
  
 /* ── BODY CONTENT ── */
 p {
-  margin-bottom: 9px; color: #4A423C;
-  font-size: 11px; line-height: 1.4;
+  margin-bottom: 12px; color: #4A423C;
+  font-size: 15.5px; line-height: 1.55;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
 p:last-child { margin-bottom: 0; }
@@ -764,47 +816,48 @@ strong { font-weight: 700; color: #2B2320; }
  
 /* Section subheadings */
 h4 {
-  font-family: 'Inter', Helvetica, Arial, sans-serif; font-size: 12px; font-weight: 700;
-  color: #2B2320; margin: 14px 0 7px;
-  padding-bottom: 5px;
+  font-family: 'Inter', Helvetica, Arial, sans-serif; font-size: 13.5px; font-weight: 700;
+  letter-spacing: .04em; text-transform: uppercase;
+  color: #2B2320; margin: 20px 0 10px;
+  padding-bottom: 6px;
   border-bottom: 2px solid #E8E4DE;
   display: flex; align-items: center; gap: 8px;
 }
 h4::before {
   content: '';
-  display: inline-block; width: 4px; height: 12px;
+  display: inline-block; width: 4px; height: 14px;
   background: #C1502E; border-radius: 2px; flex-shrink: 0;
 }
 h5 {
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 9px; font-weight: 700;
-  letter-spacing: .14em; text-transform: uppercase;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
   color: #6B7245; margin-bottom: 8px;
 }
  
 /* Lists */
-ul { margin: 6px 0 10px; padding: 0; list-style: none; }
+ul { margin: 8px 0 14px; padding: 0; list-style: none; }
 ul li {
-  display: flex; gap: 8px; margin-bottom: 5px;
-  font-size: 11px; color: #5A5049; line-height: 1.4;
+  display: flex; gap: 8px; margin-bottom: 7px;
+  font-size: 15px; color: #5A5049; line-height: 1.55;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
 ul li::before { content: '→'; color: #6B7245; font-weight: 700; flex-shrink: 0; margin-top: 2px; }
  
-ol { margin: 6px 0 10px; padding: 0; list-style: none; counter-reset: steps; }
+ol { margin: 8px 0 14px; padding: 0; list-style: none; counter-reset: steps; }
 ol li {
-  display: flex; gap: 10px; margin-bottom: 7px;
-  font-size: 11px; color: #5A5049; line-height: 1.4;
+  display: flex; gap: 10px; margin-bottom: 9px;
+  font-size: 15px; color: #5A5049; line-height: 1.55;
   counter-increment: steps; font-family: 'Inter', Helvetica, Arial, sans-serif;
-  padding: 6px 10px; background: #F7F5F2;
+  padding: 9px 12px; background: #F7F5F2;
   border: 1px solid #E8E4DE; border-radius: 8px;
 }
 ol li::before {
   content: counter(steps);
   display: inline-flex; align-items: center; justify-content: center;
-  min-width: 18px; height: 18px; border-radius: 50%;
+  min-width: 22px; height: 22px; border-radius: 50%;
   background: rgba(107,114,69,0.12); color: #6B7245;
-  font-size: 9px; font-weight: 700; flex-shrink: 0;
+  font-size: 12px; font-weight: 700; flex-shrink: 0;
   font-family: 'Inter', Helvetica, Arial, sans-serif; margin-top: 1px;
 }
  
@@ -814,9 +867,9 @@ ol li::before {
   border: 1px solid #fde68a;
   border-left: 5px solid #B07A2A;
   border-radius: 0 10px 10px 0;
-  padding: 8px 12px; margin: 0 0 12px 0;
-  font-size: 11px; color: #78350f; font-weight: 600;
-  line-height: 1.45; font-family: 'Inter', Helvetica, Arial, sans-serif;
+  padding: 12px 16px; margin: 0 0 16px 0;
+  font-size: 15px; color: #78350f; font-weight: 600;
+  line-height: 1.55; font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
  
 /* ── MATH BOX — the shown work behind every leak estimate ── */
@@ -825,11 +878,22 @@ ol li::before {
   border: 1px solid #D9D4CC;
   border-left: 5px solid #C1502E;
   border-radius: 0 10px 10px 0;
-  padding: 10px 14px; margin: 6px 0 12px;
+  padding: 14px 16px; margin: 10px 0 16px;
   font-family: 'Courier New', Courier, monospace;
-  font-size: 10.5px; color: #4A423C;
+  font-size: 14.5px; color: #4A423C;
   line-height: 1.65;
   break-inside: avoid; page-break-inside: avoid;
+}
+/* ── INLINE CHART (injected under THE MATH) ── */
+.chart-inline {
+  background: #F7F5F2; border: 1px solid #E8E4DE;
+  border-radius: 8px; padding: 14px; margin: 10px 0 16px;
+  break-inside: avoid; page-break-inside: avoid;
+}
+.chart-inline .cap {
+  font-family: 'Inter', Helvetica, Arial, sans-serif;
+  font-size: 12px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: #9A8C80; margin-bottom: 10px;
 }
 .math-box strong { font-family: inherit; color: #2B2320; }
 
@@ -851,13 +915,13 @@ ol li::before {
 }
 .howto-rule { width: 56px; height: 4px; background: #C1502E; border-radius: 2px; margin: 12px 0 24px; }
 .howto h4 { margin-top: 20px; }
-.howto p { font-size: 11.5px; line-height: 1.55; }
+.howto p { font-size: 15.5px; line-height: 1.6; }
 .cta-btn {
   display: inline-block;
   background: #C1502E; color: #FFF8F0 !important;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 13px; font-weight: 700;
-  padding: 13px 28px; border-radius: 999px;
+  font-size: 15px; font-weight: 700;
+  padding: 14px 30px; border-radius: 999px;
   text-decoration: none; margin: 14px 0 6px;
 }
 
@@ -871,18 +935,18 @@ ol li::before {
 .slabel {
   display: block;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 8.5px; font-weight: 700;
-  letter-spacing: .16em; text-transform: uppercase;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
   color: #6B7245;
-  padding: 6px 12px;
+  padding: 8px 14px;
   border-bottom: 1px solid #E8E4DE;
   background: #F0EDE8;
 }
 .script p {
   color: #4A423C !important;
-  font-size: 10.5px;
-  line-height: 1.45; margin: 0;
-  padding: 8px 12px;
+  font-size: 14.5px;
+  line-height: 1.55; margin: 0;
+  padding: 10px 14px;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
 .script strong { color: #2B2320 !important; }
@@ -893,7 +957,7 @@ ol li::before {
   border: 1px solid #E8E4DE;
   border-left: 5px solid #6B7245;
   border-radius: 0 10px 10px 0;
-  padding: 10px 14px; margin: 8px 0;
+  padding: 14px 16px; margin: 12px 0;
 }
 .action-box h5 {
   color: #6B7245; margin-bottom: 8px;
@@ -905,39 +969,39 @@ ol li::before {
   border: 1px solid rgba(107,114,69,0.2);
   border-left: 5px solid #6B7245;
   border-radius: 0 10px 10px 0;
-  padding: 8px 12px; margin: 8px 0;
-  font-size: 10.5px; color: #4A5230;
-  font-weight: 600; line-height: 1.45;
+  padding: 12px 16px; margin: 12px 0;
+  font-size: 14.5px; color: #4A5230;
+  font-weight: 600; line-height: 1.55;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
  
 /* ── DISCLAIMER ── */
 .disclaimer {
   background: #F7F5F2; border: 1px solid #E8E4DE;
-  border-radius: 8px; padding: 7px 10px;
-  margin: 8px 0; font-size: 9.5px;
-  color: #9A8C80; line-height: 1.45;
+  border-radius: 8px; padding: 9px 12px;
+  margin: 10px 0; font-size: 11.5px;
+  color: #9A8C80; line-height: 1.5;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
  
 /* ── TABLES ── */
-table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 10.5px; }
+table { width: 100%; border-collapse: collapse; margin: 12px 0; font-size: 13.5px; }
 thead tr { background: #2B2320; }
 th {
   background: #2B2320; color: #FFF8F0;
-  padding: 6px 10px; text-align: left;
+  padding: 8px 12px; text-align: left;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 8.5px; font-weight: 700;
-  letter-spacing: .1em; text-transform: uppercase;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .08em; text-transform: uppercase;
 }
 th:first-child { border-radius: 6px 0 0 0; }
 th:last-child { border-radius: 0 6px 0 0; }
 td {
-  padding: 6px 10px;
+  padding: 8px 12px;
   border-bottom: 1px solid #E8E4DE;
   color: #5A5049; vertical-align: top;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 10.5px;
+  font-size: 13.5px;
 }
 tr:last-child td { border-bottom: none; }
 tr:nth-child(even) td { background: #F7F5F2; }
@@ -948,25 +1012,25 @@ tr:hover td { background: #F0EDE8; }
 .pcard {
   background: #F7F5F2;
   border: 1px solid #E8E4DE;
-  border-radius: 10px; padding: 10px 14px; margin-bottom: 8px;
+  border-radius: 10px; padding: 14px 16px; margin-bottom: 12px;
 }
 .ptag {
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 9.5px; font-weight: 700;
-  letter-spacing: .14em; text-transform: uppercase;
+  font-size: 12px; font-weight: 700;
+  letter-spacing: .12em; text-transform: uppercase;
   color: #FFF8F0; margin-bottom: 4px;
   background: #6B7245; display: inline-block;
-  padding: 3px 10px; border-radius: 20px;
-  margin-bottom: 8px;
+  padding: 4px 12px; border-radius: 20px;
+  margin-bottom: 10px;
 }
 .ptitle {
   font-family: 'Poppins', 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 12px; font-weight: 800;
-  color: #2B2320; margin-bottom: 8px;
+  font-size: 15px; font-weight: 800;
+  color: #2B2320; margin-bottom: 10px;
 }
 .ptask {
-  display: flex; gap: 8px; margin-bottom: 5px;
-  font-size: 10.5px; color: #5A5049; line-height: 1.4;
+  display: flex; gap: 8px; margin-bottom: 7px;
+  font-size: 14px; color: #5A5049; line-height: 1.5;
   align-items: flex-start; font-family: 'Inter', Helvetica, Arial, sans-serif;
 }
 .ptask::before {
@@ -975,9 +1039,9 @@ tr:hover td { background: #F0EDE8; }
 }
 .pmile {
   background: #FFFFFF; border: 1px solid #E8E4DE; border-radius: 8px;
-  padding: 7px 10px; margin-top: 8px;
-  font-size: 10px; color: #4A5230;
-  font-weight: 600; line-height: 1.45;
+  padding: 10px 12px; margin-top: 10px;
+  font-size: 13px; color: #4A5230;
+  font-weight: 600; line-height: 1.5;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
   border-left: 4px solid #C1502E;
 }
@@ -994,14 +1058,14 @@ tr:hover td { background: #F0EDE8; }
 }
 .footer p {
   font-family: 'Inter', Helvetica, Arial, sans-serif;
-  font-size: 12px; color: #9A8C80;
+  font-size: 13px; color: #9A8C80;
   margin-bottom: 3px;
 }
 blockquote {
   background: #F7F5F2; border: 1px solid #E8E4DE; border-radius: 8px;
-  padding: 10px 14px; margin: 8px 0;
-  color: #4A423C; font-size: 10.5px;
-  line-height: 1.5;
+  padding: 12px 16px; margin: 12px 0;
+  color: #4A423C; font-size: 14px;
+  line-height: 1.55;
   font-family: 'Inter', Helvetica, Arial, sans-serif;
   border-left: 4px solid #6B7245;
 }
@@ -1167,24 +1231,47 @@ p { orphans: 3; widows: 3; }
   const chartSection = `<div class="chart-section">
     <div class="chart-head"><div class="sec-num">00</div><div class="sec-title-h">Performance Dashboard — Visual Overview</div></div>
     <div class="chart-body">
+      <div class="chart-wrap"><div class="chart-label">Where the money is leaking</div>${svgLeakMotif(moRound(L.total))}</div>
       <div class="chart-wrap"><div class="chart-label">Estimated monthly leak by category</div>${svgBarChart(catsMonthly)}</div>
       <div class="chart-wrap"><div class="chart-label">Your performance score vs industry benchmark</div>${svgScoreChart(L.sc)}</div>
       <div class="chart-wrap"><div class="chart-label">Conservative 90-day recovery projection</div>${svgLineChart(L.total)}</div>
     </div>
   </div>`;
  
+  // Illustrative per-section SVGs, injected right after THE MATH box, built from
+  // their real numbers only. Sections without a clean numeric pair get no chart.
+  const injectAfterMathBox = (html, svg) => {
+    if (!html || !svg) return html;
+    if (!/<div class="math-box">/.test(html)) return html;
+    return html.replace(/(<div class="math-box">[\s\S]*?<\/div>)/, `$1\n<div class="chart-inline">${svg}</div>`);
+  };
+  const closeFrac = (L.meta && typeof L.meta.close === 'number') ? L.meta.close : null;
+  const mthLeads = (L.meta && L.meta.mthLeads) ? L.meta.mthLeads : null;
+  const retPct = (L.meta && typeof L.meta.retRate === 'number') ? Math.round(L.meta.retRate * 100) : null;
+  const sectionCharts = {};
+  if (mthLeads && closeFrac != null) {
+    const closedN = Math.max(0, Math.round(mthLeads * closeFrac));
+    const funnel = `<div class="cap">Your monthly lead flow</div>${svgFunnel(mthLeads, closedN)}`;
+    sectionCharts.SPEED = funnel;
+    sectionCharts.CONV = `<div class="cap">Close rate vs benchmark</div>${svgVsBench(Math.round(closeFrac * 100), bench.closeRate, { unit: '%' })}${funnel}`;
+  }
+  if (retPct != null) {
+    sectionCharts.RET = `<div class="cap">Repeat rate vs benchmark</div>${svgVsBench(retPct, bench.retention, { unit: '%' })}`;
+  }
+
   // Sections — start numbering at 01 (00 is the dashboard)
   let sectionsHtml = '';
   sectionKeys.forEach((k, i) => {
     if (!sections[k]) return;
     const catKey = catKeyMap[k];
     const catMatch = catKey ? L.cats.find(c => c.n.toLowerCase().includes(catKey.toLowerCase())) : null;
+    const bodyHtml = sectionCharts[k] ? injectAfterMathBox(sections[k], sectionCharts[k]) : sections[k];
     sectionsHtml += `<div class="rsec">
       <div class="rsec-head">
         <div class="rsec-left"><div class="sec-num">${String(i + 1).padStart(2,'0')}</div><div class="rsec-title">${sectionTitles[k]}</div></div>
         ${catMatch?`<div class="rsec-amt">~$${moRound(catMatch.amt).toLocaleString()}/mo</div>`:''}
       </div>
-      <div class="rsec-body">${sections[k]}</div>
+      <div class="rsec-body">${bodyHtml}</div>
     </div>`;
   });
  
@@ -1211,7 +1298,7 @@ p { orphans: 3; widows: 3; }
   // Unnumbered front page right after the cover: the honesty block + the early CTA.
   // One page, always. Owner-ordered: the CTA lives at the beginning, not just the end.
   const howtoHtml = `<div class="howto">
-    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6B7245;margin-bottom:10px;">How to use this report</div>
+    <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#6B7245;margin-bottom:10px;">How to use this report</div>
     <div class="howto-title">Read This First</div>
     <div class="howto-rule"></div>
     <h4>How we got your numbers</h4>
@@ -1220,11 +1307,11 @@ p { orphans: 3; widows: 3; }
     <p><strong>1. Do it yourself.</strong> Go straight to the Do This Week page and run that play. Then open Your Fix Order and work down the list, one play at a time. Every section says the number first, shows the math behind it, then gives you the fix.</p>
     <p><strong>2. Walk it with Flavio.</strong> Your audit includes a free 30-minute call with Flavio DeOliveira, who built this diagnostic. Bring the report and your last 10 invoices. You leave with your first three moves locked.</p>
     <a class="cta-btn" href="https://calendly.com/flaviod022/discovery-call-flavio-deoliveira">Book your free 30-minute call</a>
-    <p style="font-size:10px;color:#9A8C80;margin-top:4px;">calendly.com/flaviod022/discovery-call-flavio-deoliveira</p>
+    <p style="font-size:12px;color:#9A8C80;margin-top:4px;">calendly.com/flaviod022/discovery-call-flavio-deoliveira</p>
   </div>`;
 
   const legalHtml = `<div style="background:#F7F5F2;border:1px solid #E8E4DE;border-radius:10px;padding:22px;margin-bottom:16px;">
-    <div style="font-size:10px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#9A8C80;margin-bottom:12px;">Important Notices & Disclaimers</div>
+    <div style="font-size:12px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:#9A8C80;margin-bottom:12px;">Important Notices & Disclaimers</div>
     <p style="font-size:12px;color:#6E6259;line-height:1.7;margin-bottom:8px;"><strong style="color:#2B2320;">No Refund Policy:</strong> This report is a personalised, AI-generated diagnostic document. All sales are final once delivered.</p>
     <p style="font-size:12px;color:#6E6259;line-height:1.7;margin-bottom:8px;"><strong style="color:#2B2320;">Not Professional Advice:</strong> Content is for informational purposes only. Consult qualified professionals before making significant business decisions.</p>
     <p style="font-size:12px;color:#6E6259;line-height:1.7;margin-bottom:8px;"><strong style="color:#2B2320;">Estimates Only:</strong> All revenue figures are based on the ranges you self-reported. They are directional estimates, not guarantees.</p>
@@ -1241,7 +1328,7 @@ p { orphans: 3; widows: 3; }
           <div style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:18px;font-weight:800;letter-spacing:-0.3px;color:#2B2320;">RevAnalysis</div>
           <div style="height:3px;background:#C1502E;border-radius:2px;margin-top:3px;"></div>
         </div>
-        <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#6B7245;border:1px solid rgba(107,114,69,.35);padding:4px 12px;border-radius:20px;">Confidential · Revenue Leak Audit</div>
+        <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:#6B7245;border:1px solid rgba(107,114,69,.35);padding:4px 12px;border-radius:20px;">Confidential · Revenue Leak Audit</div>
       </div>
 
       <div style="margin-bottom:44px;">
@@ -1250,42 +1337,42 @@ p { orphans: 3; widows: 3; }
       </div>
 
       <div style="margin-bottom:44px;">
-        <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#9A8C80;margin-bottom:14px;">Prepared for</div>
+        <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#9A8C80;margin-bottom:14px;">Prepared for</div>
         <div style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:34px;font-weight:800;color:#2B2320;line-height:1.15;letter-spacing:-0.5px;margin-bottom:8px;">${greeting || bizName}</div>
         <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:18px;font-weight:500;color:#6E6259;margin-bottom:4px;">${bizName}</div>
         <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:#9A8C80;">${industry}</div>
       </div>
 
       <div style="margin-bottom:44px;">
-        <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#9A8C80;margin-bottom:12px;">Estimated Monthly Leak</div>
+        <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;font-weight:600;letter-spacing:.16em;text-transform:uppercase;color:#9A8C80;margin-bottom:12px;">Estimated Monthly Leak</div>
         <div style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:56px;font-weight:800;color:#C1502E;line-height:1;letter-spacing:-2px;margin-bottom:8px;">~$${moTotal.toLocaleString()}/mo</div>
         <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:13px;color:#6E6259;">about $${L.total.toLocaleString()} a year · conservative range $${L.totalLo.toLocaleString()} – $${L.totalHi.toLocaleString()}</div>
       </div>
 
       <div style="display:flex;gap:32px;">
         <div>
-          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9A8C80;margin-bottom:4px;">Biggest Leak</div>
+          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9A8C80;margin-bottom:4px;">Biggest Leak</div>
           <div style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:18px;font-weight:800;color:#C1502E;">~$${moRound(L.cats[0].amt).toLocaleString()}/mo</div>
-          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:#9A8C80;margin-top:2px;">${L.cats[0].n}</div>
+          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:#9A8C80;margin-top:2px;">${L.cats[0].n}</div>
         </div>
         <div style="width:1px;background:#E8E4DE;"></div>
         <div>
-          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9A8C80;margin-bottom:4px;">Realistic 90-Day Target</div>
+          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9A8C80;margin-bottom:4px;">Realistic 90-Day Target</div>
           <div style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:18px;font-weight:800;color:#6B7245;">~$${Math.round(L.total*0.22).toLocaleString()}</div>
-          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:#9A8C80;margin-top:2px;">Conservative estimate</div>
+          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:#9A8C80;margin-top:2px;">Conservative estimate</div>
         </div>
         <div style="width:1px;background:#E8E4DE;"></div>
         <div>
-          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:9px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9A8C80;margin-bottom:4px;">Walkthrough Call</div>
+          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#9A8C80;margin-bottom:4px;">Walkthrough Call</div>
           <div style="font-family:'Poppins','Inter',Helvetica,Arial,sans-serif;font-size:18px;font-weight:800;color:#6B7245;">30 min</div>
-          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:10px;color:#9A8C80;margin-top:2px;">Included with your audit</div>
+          <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:#9A8C80;margin-top:2px;">Included with your audit</div>
         </div>
       </div>
     </div>
 
     <div style="border-top:1px solid #E8E4DE;padding-top:20px;display:flex;align-items:center;justify-content:space-between;">
-      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:#9A8C80;">Generated by RevAnalysis · ${date}</div>
-      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:11px;color:#9A8C80;">revanalysis.com</div>
+      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:#9A8C80;">Generated by RevAnalysis · ${date}</div>
+      <div style="font-family:'Inter',Helvetica,Arial,sans-serif;font-size:12px;color:#9A8C80;">revanalysis.com</div>
     </div>
   </div>`;
 
@@ -1535,7 +1622,8 @@ RULES — NON-NEGOTIABLE:
 22. WORD BUDGET: Respect the stated word maximum for each section. Shorter is better. No filler, no restating other sections. Scripts and table cells do not count toward the word maximum; all prose does.
 23. NO DISCLAIMERS: Do not write disclaimer text or <div class="disclaimer"> blocks. The report appends one consolidated disclaimer block at the end.
 24. NEVER use em dashes or en dashes anywhere in the output. Use commas, periods, or parentheses instead.
-25. Write at an 8th grade reading level. Short sentences. Say the number, then show the math, then say what to do. Never assert a precise annual outcome without the word estimate; prefer monthly figures and ranges.`;
+25. Write at an 8th grade reading level. Short sentences. Say the number, then show the math, then say what to do. Never assert a precise annual outcome without the word estimate; prefer monthly figures and ranges.
+26. TEACH, DO NOT JUST INSTRUCT. In every WHAT THIS MEANS beat, explain the mechanism before the fix. First say WHY this leak happens to most owners like them: it is structural, built into how a busy business runs, not a matter of effort or how much they care. Then say HOW the money actually escapes, in plain steps. Land one simple everyday analogy where it helps (a leaky pipe, a screen door left open, a bucket with a hole). Be direct and a little blunt: name the uncomfortable truth first, then point to the fix. Translate any jargon into plain words the moment you use it. One idea per sentence. The reader should finish able to explain the concept to their spouse, not just holding a task. Keep it tight: better words, not more words, and stay inside the section word budget.`;
 }
  
 function buildSectionPrompt(key, c) {
@@ -1570,7 +1658,7 @@ function buildSectionPrompt(key, c) {
   // FIXED SECTION SKELETON — all 8 quantified leak sections share one shape:
   // say the number, show the work, translate it, fix it, set expectations.
   // The math box replaces vague authority with visible arithmetic from THEIR data.
-  const skel = (o) => `\nSTRUCTURE, MANDATORY: use these EXACT five subheadings, each in its own <h4> tag, in this EXACT order: THE NUMBER, THE MATH, WHAT THIS MEANS, THE FIX, WHAT TO EXPECT. No other subheadings. Every quantified section of this report uses this identical shape.\n\n<div class="quick-win">[${o.qw}]</div>\n\n<h4>THE NUMBER</h4>\n<p>[ONE sentence stating the estimated monthly leak in dollars. ${o.number}]</p>\n\n<h4>THE MATH</h4>\n<div class="math-box">You told us: [${o.told}].<br>Benchmark: [${o.bench}].<br>The gap: [${o.gap} Write the arithmetic out visibly with x and = signs, using ONLY the client data above, ending at the monthly estimate. Format like: 45 leads x 18 pct gap x $850 avg job = ~$6,885/mo. No unstated multipliers: every factor in the equation must be named.]</div>\n\n<h4>WHAT THIS MEANS</h4>\n<p>[2-3 short plain sentences. 8th grade reading level. Second person. ${o.means}]</p>\n\n<h4>THE FIX</h4>\n${o.fix}\n\n<h4>WHAT TO EXPECT</h4>\n<p>[One or two sentences: a conservative recovery range in $/mo and the time window to see it. ${o.expect}]</p>\n\nWORD BUDGET: maximum 300 words of prose. Scripts are exempt from the word cap and must stay complete, word-for-word.`;
+  const skel = (o) => `\nSTRUCTURE, MANDATORY: use these EXACT five subheadings, each in its own <h4> tag, in this EXACT order: THE NUMBER, THE MATH, WHAT THIS MEANS, THE FIX, WHAT TO EXPECT. No other subheadings. Every quantified section of this report uses this identical shape.\n\n<div class="quick-win">[${o.qw}]</div>\n\n<h4>THE NUMBER</h4>\n<p>[ONE sentence stating the estimated monthly leak in dollars. ${o.number}]</p>\n\n<h4>THE MATH</h4>\n<div class="math-box">You told us: [${o.told}].<br>Benchmark: [${o.bench}].<br>The gap: [${o.gap} Write the arithmetic out visibly with x and = signs, using ONLY the client data above, ending at the monthly estimate. Format like: 45 leads x 18 pct gap x $850 avg job = ~$6,885/mo. No unstated multipliers: every factor in the equation must be named.]</div>\n\n<h4>WHAT THIS MEANS</h4>\n<p>[TEACH the mechanism here, do not just restate the loss. 3-4 short plain sentences at an 8th grade level, one idea each, second person. First: WHY this leak happens to most owners like them, and make clear it is structural (built into how a busy business runs), not a matter of effort or caring. Then: HOW the money actually escapes, step by step in plain words. Then land ONE simple everyday analogy (a leaky pipe, a screen door left open, a bucket with a hole) so they could explain it to their spouse. Name the uncomfortable truth plainly before pointing to the fix. ${o.means}]</p>\n\n<h4>THE FIX</h4>\n${o.fix}\n\n<h4>WHAT TO EXPECT</h4>\n<p>[One or two sentences: a conservative recovery range in $/mo and the time window to see it. ${o.expect}]</p>\n\nWORD BUDGET: maximum 300 words of prose. Scripts are exempt from the word cap and must stay complete, word-for-word.`;
   const prompts = {
     EXEC:`${base}\nWrite ONLY the [EXEC] section. First line: [EXEC]\n\nMaximum 200 words total. 3 short paragraphs:\n- Para 1: Open with the ${c.totalMo} estimated leak (about ${c.total} a year; range: ${c.totalRange}). Monthly figure first. Conservative language, plain words.\n- Para 2: The top 3 leaks: ${c.top3}. One line each: the number and what is causing it.\n- Para 3: The next 90 days. Quote "businesses in ${c.ind} typically recover 15-25% in 90 days." Keep it realistic.\n<div class="stat-call">One real industry statistic with source name relevant to ${c.ind}.</div>\nEND the section with this EXACT sentence as its own final paragraph: <p><strong>If you read nothing else: do the play on the next page this week.</strong></p>`,
 
@@ -1585,7 +1673,7 @@ function buildSectionPrompt(key, c) {
       bench:`leads contacted within 5 minutes are roughly 21x more likely to qualify than at 30 minutes (InsideSales.com research cited by HBR), and the first responder wins most jobs`,
       gap:`${c.mthLeads} leads/mo x [share lost to faster competitors, from their response tier] x ~${c.close} close x ~${c.avgLo} avg job = the monthly estimate.`,
       means:'You are paying to generate leads that a faster competitor books. Slow response does not lose bad leads. It loses the ready-to-buy ones.',
-      fix:`<ol><li>[Set up missed-call text-back: tool category and time estimate]</li><li>[The 5-minute response rule during work hours: who owns the phone, what the instant reply says]</li><li>[After-hours catch: what fires when nobody can answer]</li><li>[Weekly check: response time on the last 10 leads]</li></ol>\n<div class="script"><span class="slabel">Missed-Call Text-Back Message (under 160 characters)</span><p>[Complete text message: acknowledges the missed call, promises a callback time, asks one easy question]</p></div>\n<div class="script"><span class="slabel">Instant Web-Form Reply (under 160 characters)</span><p>[Complete text/email auto-reply]</p></div>`,
+      fix:`<ol><li>[Set up missed-call text-back: tool category and time estimate]</li><li>[The 5-minute response rule during work hours: who owns the phone, what the instant reply says]</li><li>[After-hours catch: what fires when nobody can answer]</li><li>[Weekly check: response time on the last 10 leads]</li></ol>\n<div class="script"><span class="slabel">Missed-Call Text-Back Message (under 160 characters)</span><p>[Complete text message: acknowledges the missed call, promises a callback time, asks one easy question]</p></div>\n<div class="script"><span class="slabel">Instant Web-Form Reply (under 160 characters)</span><p>[Complete text/email auto-reply]</p></div>\n<p><strong>AI can do this part for you.</strong> [ONE concrete sentence: the missed-call text-back and instant reply above can fire automatically without anyone at the phone, and point the reader to the AI Leverage section. No selling.]</p>`,
       expect:'Base it on closing most of the response-speed gap within 2 to 4 weeks of the text-back going live.'
     })}`,
 
@@ -1596,7 +1684,7 @@ function buildSectionPrompt(key, c) {
       bench:`${c.bench.closeRate}% close rate for ${c.bench.label} (${c.bench.source}); Salesforce: 80% of sales take 5 or more follow-up touches`,
       gap:`${c.mthLeads} leads/mo x [close-rate gap in points] x ~${c.avgLo} avg job x [lead-quality haircut, name it] = the monthly estimate.`,
       means:'Most quotes do not die from a no. They die from silence, because nobody followed up a second, third, or fifth time.',
-      fix:`<ol><li>[Put every open quote into one list, time estimate]</li><li>[Schedule the 5-email sequence below on every new quote, time estimate]</li><li>[Name one follow-up owner: who sends, and when]</li></ol>\nCRITICAL: Write each email COMPLETE, no placeholders. 45-70 words each.\n<div class="script"><span class="slabel">Email 1 - Same Day (Subject: [specific subject for ${c.ind}])</span><p>[Complete 65-word email]</p></div>\n<div class="script"><span class="slabel">Email 2 - Day 2 (Subject: [specific subject])</span><p>[Complete 60-word email]</p></div>\n<div class="script"><span class="slabel">Email 3 - Day 5 (Subject: [specific subject])</span><p>[Complete 60-word email, addresses the most common ${c.ind} objection]</p></div>\n<div class="script"><span class="slabel">Email 4 - Day 10 (Subject: [specific subject])</span><p>[Complete 55-word email, mild urgency]</p></div>\n<div class="script"><span class="slabel">Email 5 - Day 21 (Subject: Closing the loop)</span><p>[Complete 45-word breakup email]</p></div>`,
+      fix:`<ol><li>[Put every open quote into one list, time estimate]</li><li>[Schedule the 5-email sequence below on every new quote, time estimate]</li><li>[Name one follow-up owner: who sends, and when]</li></ol>\nCRITICAL: Write each email COMPLETE, no placeholders. 45-70 words each.\n<div class="script"><span class="slabel">Email 1 - Same Day (Subject: [specific subject for ${c.ind}])</span><p>[Complete 65-word email]</p></div>\n<div class="script"><span class="slabel">Email 2 - Day 2 (Subject: [specific subject])</span><p>[Complete 60-word email]</p></div>\n<div class="script"><span class="slabel">Email 3 - Day 5 (Subject: [specific subject])</span><p>[Complete 60-word email, addresses the most common ${c.ind} objection]</p></div>\n<div class="script"><span class="slabel">Email 4 - Day 10 (Subject: [specific subject])</span><p>[Complete 55-word email, mild urgency]</p></div>\n<div class="script"><span class="slabel">Email 5 - Day 21 (Subject: Closing the loop)</span><p>[Complete 45-word breakup email]</p></div>\n<p><strong>AI can do this part for you.</strong> [ONE concrete sentence: this whole 5-touch follow-up sequence can send itself automatically on every quote, so no lead slips through silence, and point the reader to the AI Leverage section. No selling.]</p>`,
       expect:'Tie the range to running the sequence on every quote for 30 days.'
     })}`,
 
@@ -1608,13 +1696,13 @@ function buildSectionPrompt(key, c) {
       bench:`re-engagement campaigns typically reactivate 10-20% of dormant leads; this report uses a conservative 12%`,
       gap:`${c.dead} dormant quotes x 12 pct reactivation x ~${c.avgLo} avg job = ~$${c.deadVal.toLocaleString()} recoverable, then state it per month.`,
       means:'These people already asked you for a price. They are the cheapest revenue you will ever win back. Every week they sit, more of them hire someone else.',
-      fix:`<ol><li>[Pull the full dormant quote list, newest first, time estimate]</li><li>[Send the re-engagement email below, time estimate]</li><li>[Text the non-responders 3 days later, time estimate]</li><li>[Final email at day 10, then archive, ongoing]</li></ol>\n<div class="script"><span class="slabel">Re-engagement Email (Subject: [specific to ${c.ind}])</span><p>[Complete 65-word email]</p></div>\n<div class="script"><span class="slabel">Follow-Up Text - 3 Days Later (under 140 chars)</span><p>[Complete text]</p></div>\n<div class="script"><span class="slabel">Final Email - Day 10 (Subject: Last one from us)</span><p>[Complete 45-word closing email]</p></div>`,
+      fix:`<ol><li>[Pull the full dormant quote list, newest first, time estimate]</li><li>[Send the re-engagement email below, time estimate]</li><li>[Text the non-responders 3 days later, time estimate]</li><li>[Final email at day 10, then archive, ongoing]</li></ol>\n<div class="script"><span class="slabel">Re-engagement Email (Subject: [specific to ${c.ind}])</span><p>[Complete 65-word email]</p></div>\n<div class="script"><span class="slabel">Follow-Up Text - 3 Days Later (under 140 chars)</span><p>[Complete text]</p></div>\n<div class="script"><span class="slabel">Final Email - Day 10 (Subject: Last one from us)</span><p>[Complete 45-word closing email]</p></div>\n<p><strong>AI can do this part for you.</strong> [ONE concrete sentence: an automated quote follow-up sequence can work this dormant list for you on a schedule instead of by hand, and point the reader to the AI Leverage section. No selling.]</p>`,
       expect:'First reactivated jobs typically book within 1 to 2 weeks of the first send.'
     })}`,
  
-    SYSTEMS:`${base}\nWrite ONLY the [SYSTEMS] section. First line: [SYSTEMS]\n\nMaximum 250 words of prose plus the one table.\n\n<div class="quick-win">[One specific automation action THIS WEEK for ${c.ind} — one repetitive manual task to automate in under an hour]</div>\n\n<h4>Systems & Automation Diagnosis</h4>\n<p>They report approximately ${c.adminH} hours/week of manual admin (quoting, invoicing, follow-up, scheduling). At a conservative $45/hour replacement cost, that is approximately $${Math.round(c.adminH*52*45).toLocaleString()}/year of owner or staff time on work software can do. Roughly 60% of it is automatable with today's tools, reclaiming an estimated ${Math.round(c.adminH*0.6)} hours/week. Honest assessment specific to ${c.ind}.</p>\n<h4>What to Automate First — Ranked by Hours Reclaimed</h4>\n<table><tr><th>Rank</th><th>Process</th><th>Est. Hours/Week Reclaimed</th><th>How (specific to ${c.ind})</th></tr><tr><td>1</td><td>[highest-hour manual process, e.g. lead follow-up]</td><td>[hours]</td><td>[specific automation approach]</td></tr><tr><td>2</td><td>[process]</td><td>[hours]</td><td>[approach]</td></tr><tr><td>3</td><td>[process]</td><td>[hours]</td><td>[approach]</td></tr><tr><td>4</td><td>[process]</td><td>[hours]</td><td>[approach]</td></tr></table>\n<h4>The Follow-Up Machine</h4>\n<p>The single highest-value automation for ${c.ind}: automatic speed-to-lead response and structured follow-up sequences. What it looks like when running, and the estimated revenue it protects given their ~${c.close} close rate and ~${c.mthLeads} leads/month. 3-4 sentences.</p>\n<h4>AI and Modern Automation for ${c.ind}</h4>\n<p>Where AI-driven automation realistically helps a ${c.ind} business at ${c.revRange}: quote drafting, review responses, appointment reminders, invoice chasing, job notes. What to adopt now vs skip. Practical, no hype. 2-3 sentences, ending with ONE sentence naming the single tool category (and one example product) that covers most of this for their trade — no software shopping lists.</p>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
+    SYSTEMS:`${base}\nWrite ONLY the [SYSTEMS] section. First line: [SYSTEMS]\n\nMaximum 250 words of prose plus the one table.\n\n<div class="quick-win">[One specific automation action THIS WEEK for ${c.ind} — one repetitive manual task to automate in under an hour]</div>\n\n<h4>Systems & Automation Diagnosis</h4>\n<p>They report approximately ${c.adminH} hours/week of manual admin (quoting, invoicing, follow-up, scheduling). At a conservative $45/hour replacement cost, that is approximately $${Math.round(c.adminH*52*45).toLocaleString()}/year of owner or staff time on work software can do. Roughly 60% of it is automatable with today's tools, reclaiming an estimated ${Math.round(c.adminH*0.6)} hours/week. Honest assessment specific to ${c.ind}.</p>\n<h4>What to Automate First — Ranked by Hours Reclaimed</h4>\n<table><tr><th>Rank</th><th>Process</th><th>Est. Hours/Week Reclaimed</th><th>How (specific to ${c.ind})</th></tr><tr><td>1</td><td>[highest-hour manual process, e.g. lead follow-up]</td><td>[hours]</td><td>[specific automation approach]</td></tr><tr><td>2</td><td>[process]</td><td>[hours]</td><td>[approach]</td></tr><tr><td>3</td><td>[process]</td><td>[hours]</td><td>[approach]</td></tr><tr><td>4</td><td>[process]</td><td>[hours]</td><td>[approach]</td></tr></table>\n<h4>The Follow-Up Machine</h4>\n<p>The single highest-value automation for ${c.ind}: automatic speed-to-lead response and structured follow-up sequences. What it looks like when running, and the estimated revenue it protects given their ~${c.close} close rate and ~${c.mthLeads} leads/month. 3-4 sentences.</p>\n<h4>AI and Modern Automation for ${c.ind}</h4>\n<p>Where AI-driven automation realistically helps a ${c.ind} business at ${c.revRange}: quote drafting, review responses, appointment reminders, invoice chasing, job notes. What to adopt now vs skip. Practical, no hype. 2-3 sentences, ending with ONE sentence naming the single tool category (and one example product) that covers most of this for their trade — no software shopping lists.</p>\n<p><strong>AI can do this part for you.</strong> [ONE concrete sentence: scheduling and new-lead intake can run automatically for a ${c.ind} business so jobs book and route without manual entry, and point the reader to the AI Leverage section. No selling.]</p>\n<div class="action-box"><h5>4 Action Steps</h5><ol><li>[step, time]</li><li>[step, time]</li><li>[step, time]</li><li>[step]</li></ol></div>`,
  
-    AI:`${base}\nWrite ONLY the [AI] section. First line: [AI]\n\nThis section is "AI Leverage": where AI can take real work off the owner's plate THIS quarter. Their current adoption level: ${c.aiLabel}. Sequence every recommendation to that level:\n- If nothing is running yet (or they tried tools and nothing stuck): start with the two proven entry points, missed-call text-back and automated review requests. Near-zero risk, live in a day, no new habits required. If tools did not stick before, say why that usually happens (tool chosen before the job was defined) and how starting smaller fixes it.\n- If one AI tool already runs part of the business (booking, quoting, or follow-up): extend into the neighboring jobs, quoting, invoicing, and follow-up automation around what already works.\n- If AI already handles several jobs: focus on connecting the pieces (lead intake to quote to invoice to review request) and measuring what each automation saves per week.\nConcrete tool-category guidance only: name the CATEGORY and at most ONE example product per category. No shopping lists. Do not sell any service. Show what is possible and practical this quarter; the report closes with how to get help if they want it.\n\nSTRUCTURE, MANDATORY: use these EXACT five subheadings, each in its own <h4> tag, in this EXACT order: THE NUMBER, THE MATH, WHAT THIS MEANS, THE FIX, WHAT TO EXPECT.\n\n<div class="quick-win">[The single first AI move for their adoption level, live within a week, under 1 hour of setup]</div>\n\n<h4>THE NUMBER</h4>\n<p>[One sentence: an estimated ~$${aiMoVal.toLocaleString()}/mo of owner time is sitting in admin work AI can take over.]</p>\n\n<h4>THE MATH</h4>\n<div class="math-box">You told us: [~${c.adminH} hrs/week of manual admin; AI today: ${c.aiLabel}].<br>Benchmark: [roughly 60% of small-business admin is automatable with current tools, valued at a conservative $45/hr].<br>The gap: ${c.adminH} hrs/week x 60 pct x $45/hr x 4.3 weeks = ~$${aiMoVal.toLocaleString()}/mo of owner time.</div>\n\n<h4>WHAT THIS MEANS</h4>\n<p>[2-3 short plain sentences for their adoption level. AI here is not a project for later; it is one or two boring automations that hand hours back this month.]</p>\n\n<h4>THE FIX</h4>\n<ol><li>[First automation for their level: the job it does, the tool CATEGORY, one example product, setup time]</li><li>[Second automation: same format]</li><li>[Third automation: same format]</li></ol>\n\n<h4>WHAT TO EXPECT</h4>\n<p>[Conservative: estimated hours per week back and what that is worth per month, within 30 to 60 days.]</p>\n\nWORD BUDGET: maximum 300 words of prose.`,
+    AI:`${base}\nWrite ONLY the [AI] section. First line: [AI]\n\nThis section is "AI Leverage": where AI can take real work off the owner's plate THIS quarter. Their current adoption level: ${c.aiLabel}. Sequence every recommendation to that level:\n- If nothing is running yet (or they tried tools and nothing stuck): start with the two proven entry points, missed-call text-back and automated review requests. Near-zero risk, live in a day, no new habits required. If tools did not stick before, say why that usually happens (tool chosen before the job was defined) and how starting smaller fixes it.\n- If one AI tool already runs part of the business (booking, quoting, or follow-up): extend into the neighboring jobs, quoting, invoicing, and follow-up automation around what already works.\n- If AI already handles several jobs: focus on connecting the pieces (lead intake to quote to invoice to review request) and measuring what each automation saves per week.\nConcrete tool-category guidance only: name the CATEGORY and at most ONE example product per category. No shopping lists. Do not sell any service. Show what is possible and practical this quarter; the report closes with how to get help if they want it.\n\nSTRUCTURE, MANDATORY: use these EXACT five subheadings, each in its own <h4> tag, in this EXACT order: THE NUMBER, THE MATH, WHAT THIS MEANS, THE FIX, WHAT TO EXPECT.\n\n<div class="quick-win">[The single first AI move for their adoption level, live within a week, under 1 hour of setup]</div>\n\n<h4>THE NUMBER</h4>\n<p>[One sentence: an estimated ~$${aiMoVal.toLocaleString()}/mo of owner time is sitting in admin work AI can take over.]</p>\n\n<h4>THE MATH</h4>\n<div class="math-box">You told us: [~${c.adminH} hrs/week of manual admin; AI today: ${c.aiLabel}].<br>Benchmark: [roughly 60% of small-business admin is automatable with current tools, valued at a conservative $45/hr].<br>The gap: ${c.adminH} hrs/week x 60 pct x $45/hr x 4.3 weeks = ~$${aiMoVal.toLocaleString()}/mo of owner time.</div>\n\n<h4>WHAT THIS MEANS</h4>\n<p>[TEACH why AI is the single highest-leverage move for a small operator, sized to their adoption level. 3-4 short plain sentences, one idea each. Make two points clearly: first, the hours AI hands back are not a one-time saving, they compound every single week; second, once the boring admin runs itself, every other fix in this report (follow-up, retention, collections) keeps running without the owner touching it. AI here is not a project for later, it is one or two boring automations that free the owner to sell and lead. Use a plain analogy if it helps.]</p>\n\n<h4>THE FIX</h4>\n<p>[Walk the full owner-time chain and show where AI plugs into EACH step, sequenced to their adoption level (${c.aiLabel}). For each step name the job AI does, the tool CATEGORY, at most ONE example product, and rough setup effort. Category plus one example only. No shopping lists, no selling.]</p>\n<ol><li>[Lead intake: capture the lead and reply instantly, e.g. missed-call text-back]</li><li>[Quote or estimate: draft and send faster]</li><li>[Follow-up: an automated multi-touch sequence on every open quote]</li><li>[Scheduling: booking, reminders, and routing without manual entry]</li><li>[Invoicing and collections: automated reminders until paid]</li><li>[Review requests: an automatic ask after every completed job]</li></ol>\n<p>[ONE sentence: which single step to start with for their current level and why, so they do not try to automate everything at once.]</p>\n\n<h4>WHAT TO EXPECT</h4>\n<p>[Conservative: estimated hours per week back and what that is worth per month, within 30 to 60 days.]</p>\n\nWORD BUDGET: maximum 420 words of prose.`,
 
     RET:`${base}${depthNote(catMo('retention'))}\nWrite ONLY the [RET] section. First line: [RET]\n${skel({
       qw:`One specific retention action THIS WEEK: call or email one specific type of past customer in ${c.ind}. Under 1 hour`,
@@ -1623,7 +1711,7 @@ function buildSectionPrompt(key, c) {
       bench:`${c.bench.retention}% retention for ${c.bench.label} (${c.bench.source}); Bain & Company: a 5 point retention lift grows profit 25-95%`,
       gap:`[retention gap in points] x ~${c.annCusts} customers/yr x ~${c.avgLo} avg job x [attribution haircut, name it] = the monthly estimate. Also state the estimated lifetime value once: ${c.avgMid} avg x ~1.5 jobs/yr x 4 yrs = ~$${clvEstimate}.`,
       means:'A customer who already paid you costs nothing to win again. Right now most of them finish one job and never hear from you after.',
-      fix:`<ol><li>[List every customer from the last 12 months with no repeat job, time estimate]</li><li>[Send the 30-day check-in below to recent completions, time estimate]</li><li>[Queue the 6-month re-engagement text for everyone older, time estimate]</li><li>[Wire both into the job-completion routine so they run on every job, ongoing]</li></ol>\n<div class="script"><span class="slabel">30-Day Post-Job Check-In (Email, 70 words)</span><p>[Full email, warm, specific to ${c.ind}]</p></div>\n<div class="script"><span class="slabel">6-Month Re-Engagement (Text, under 140 chars)</span><p>[Complete text]</p></div>`,
+      fix:`<ol><li>[List every customer from the last 12 months with no repeat job, time estimate]</li><li>[Send the 30-day check-in below to recent completions, time estimate]</li><li>[Queue the 6-month re-engagement text for everyone older, time estimate]</li><li>[Wire both into the job-completion routine so they run on every job, ongoing]</li></ol>\n<div class="script"><span class="slabel">30-Day Post-Job Check-In (Email, 70 words)</span><p>[Full email, warm, specific to ${c.ind}]</p></div>\n<div class="script"><span class="slabel">6-Month Re-Engagement (Text, under 140 chars)</span><p>[Complete text]</p></div>\n<p><strong>AI can do this part for you.</strong> [ONE concrete sentence: these check-in and re-engagement messages can fire automatically at the right interval after every job, and point the reader to the AI Leverage section. No selling.]</p>`,
       expect:'Repeat bookings usually show within 30 to 60 days of the first check-in batch.'
     })}`,
  
@@ -1647,7 +1735,7 @@ function buildSectionPrompt(key, c) {
       bench:`callbacks, windshield time, and gaps between jobs are capacity already paid for but never billed; a complaint costs 4-6x the transaction (at ~${c.avgMid} that is roughly $${complaintCostLo} to $${complaintCostHi} each)`,
       gap:`[recoverable jobs per week from tighter routing and fewer callbacks] x ~${c.avgLo} avg job x 4.3 weeks = the monthly estimate.`,
       means:'You do not need more leads to make more money this month. You need the hours you already pay for to turn into billed jobs.',
-      fix:`<ol><li>[Batch jobs by area to cut drive time: the exact scheduling change, time estimate]</li><li>[One end-of-job quality checklist that kills the most common callback in ${c.ind}, time estimate]</li><li>[Write the single most impactful SOP for their trade: name it and what it covers, time estimate]</li><li>[Track callbacks per week somewhere visible, ongoing]</li></ol>`,
+      fix:`<ol><li>[Batch jobs by area to cut drive time: the exact scheduling change, time estimate]</li><li>[One end-of-job quality checklist that kills the most common callback in ${c.ind}, time estimate]</li><li>[Write the single most impactful SOP for their trade: name it and what it covers, time estimate]</li><li>[Track callbacks per week somewhere visible, ongoing]</li></ol>\n<p><strong>AI can do this part for you.</strong> [ONE concrete sentence: job scheduling, routing, and appointment reminders can be automated for a ${c.ind} business so fewer slots go unbilled, and point the reader to the AI Leverage section. No selling.]</p>`,
       expect:'Recovered capacity typically shows as 1 to 2 extra billable slots per week within the first month.'
     })}`,
 
@@ -1673,7 +1761,7 @@ CASH:`${base}${depthNote(catMo('cash'))}\nWrite ONLY the [CASH] section. First l
       bench:`well-run businesses in their trade collect on completion or within 14 days`,
       gap:`at ${c.revMid} annual revenue, 30 days of receivables = ~$${Math.round(parseInt(c.revMid.replace(/[$,]/g,''))/12).toLocaleString()} of their own cash locked up; show the collection-plus-write-off leak per month.`,
       means:'Every day between finishing a job and getting paid, you are lending customers money for free. And old invoices quietly turn into invoices that never get paid at all.',
-      fix:`<ol><li>[Payment terms on every quote and invoice: exactly what to write. Time: 30 min]</li><li>[Deposit or progress payment structure for their job sizes. Time: 45 min]</li><li>[Automated invoice reminders at day 0, day 7, day 14: tool category and message. Time: 1 hr]</li><li>[Card or ACH payment on site or by link: specific option for their trade. Time: 1 hr]</li><li>[Cost the last 10 completed jobs in one spreadsheet: labor + materials + drive time + overhead vs price. Then reprice, fix, or stop selling the losers. Time: 2 hrs]</li></ol>\n<div class="script"><span class="slabel">Overdue Invoice Call Script - Day 14, Friendly But Firm</span><p>[Complete 60-word phone script, warm, direct, asks for payment today or a date]</p></div>`,
+      fix:`<ol><li>[Payment terms on every quote and invoice: exactly what to write. Time: 30 min]</li><li>[Deposit or progress payment structure for their job sizes. Time: 45 min]</li><li>[Automated invoice reminders at day 0, day 7, day 14: tool category and message. Time: 1 hr]</li><li>[Card or ACH payment on site or by link: specific option for their trade. Time: 1 hr]</li><li>[Cost the last 10 completed jobs in one spreadsheet: labor + materials + drive time + overhead vs price. Then reprice, fix, or stop selling the losers. Time: 2 hrs]</li></ol>\n<div class="script"><span class="slabel">Overdue Invoice Call Script - Day 14, Friendly But Firm</span><p>[Complete 60-word phone script, warm, direct, asks for payment today or a date]</p></div>\n<p><strong>AI can do this part for you.</strong> [ONE concrete sentence: the day 0, 7, and 14 invoice reminders can send themselves automatically until an invoice is paid, and point the reader to the AI Leverage section. No selling.]</p>`,
       expect:'Collection time usually tightens within one billing cycle once terms and reminders go live.'
     })}`,
 
